@@ -1,3 +1,5 @@
+import {stations} from './gallery-layout.mjs';
+
 const near = .14;
 const clamped = (value, max = 1) => Math.max(0, Math.min(max, value));
 const corners = [
@@ -262,6 +264,12 @@ export function createCanvasRenderer(THREE, canvas) {
       if (!object.material.visible) return;
       const matrix = transform.multiplyMatrices(camera.matrixWorldInverse, object.matrixWorld).elements;
       const type = object.geometry.type;
+      if (type === 'BoxGeometry') {
+        const extent = (object.scale.x + object.scale.y + object.scale.z) * .5;
+        const depth = -matrix[14];
+        if (depth + extent < near || depth - extent > 40 ||
+            Math.abs(matrix[12]) - extent > (depth + extent) * width / (2 * lens)) return;
+      }
       if (object.isLine) {
         seamLines.push(object);
       } else if (type === 'BoxGeometry') {
@@ -279,7 +287,9 @@ export function createCanvasRenderer(THREE, canvas) {
       const matrix = transform.multiplyMatrices(camera.matrixWorldInverse, object.matrixWorld).elements;
       stroke(context, object, matrix);
     }
-    for (const [x,y,z,hex,radius,opacity] of [[0,2.5,-4,'f7ad60',4.7,.18],[-8.2,2.25,-13.4,'3992c0',3.7,.18],[8.2,2.15,-13.4,'d96a84',3.8,.16],[0,2.6,-20.2,'d6a356',3,.13]]) {
+    const accents = stations.map(({aimX, aimZ, color}) => [aimX, 2.25, aimZ,
+      color.toString(16).padStart(6, '0'), 3.45, .14]);
+    for (const [x,y,z,hex,radius,opacity] of [[0,2.5,-4,'f7ad60',4.7,.18], ...accents]) {
       const point = viewPoint(camera.matrixWorldInverse.elements, x, y, z);
       if (point[2] < 2) continue;
       const [sx, sy] = screen(point);
@@ -303,9 +313,17 @@ export function createCanvasRenderer(THREE, canvas) {
         stroke(context, object, matrix, !object.isLine);
       } else if (object.isPoints) {
         drawPoints(context, object, matrix);
-      } else if (object.geometry?.type === 'CylinderGeometry') {
+      } else if (object.geometry?.type === 'CylinderGeometry' || object.geometry?.type === 'RingGeometry') {
         const batch = [];
         rings(object, matrix, batch);
+        renderFaces(context, batch);
+      } else if (object.geometry?.type === 'BoxGeometry') {
+        const batch = [];
+        // Some exhibit boxes have dimensions in their geometry instead of their mesh scale.
+        const {width, height, depth} = object.geometry.parameters;
+        box(object, [...matrix.slice(0,4).map((v) => v * width),
+          ...matrix.slice(4,8).map((v) => v * height),
+          ...matrix.slice(8,12).map((v) => v * depth), ...matrix.slice(12,16)], batch);
         renderFaces(context, batch);
       } else if (depth >= near) {
         const point = viewPoint(matrix, 0, 0, 0);

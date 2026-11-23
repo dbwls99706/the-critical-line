@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#141514">
-  <meta name="description" content="Walk through three installations built around the Riemann hypothesis and its published Lean proof.">
+  <meta name="description" content="Walk through seven installations built around the Riemann hypothesis and its published Lean proof.">
   <title>The Critical Line - An interactive exhibition</title>
   <link rel="icon" href="favicon.png">
   <link rel="preload" href="fonts/instrument-serif.woff2" as="font" type="font/woff2" crossorigin>
@@ -18,7 +18,6 @@
     <div class="lighting" aria-hidden="true"></div>
     <div class="intro-sky" aria-hidden="true"><canvas id="zero-atlas"></canvas></div>
     <div class="intro-shade" aria-hidden="true"></div>
-    <div id="fade" class="scene-fade" aria-hidden="true"></div>
     <header class="bar">
       <a href="./" class="identity" aria-label="The Critical Line home" data-label="identity"><span class="symbol" aria-hidden="true">ξ</span><span><strong>RIEMANN</strong><small>1859 - 2026</small></span></a>
       <div class="bar-actions">
@@ -34,40 +33,43 @@
       <div class="intro-copy">
         <p class="overline" lang="en">A RIEMANN EXHIBITION</p>
         <h1 lang="en">The Critical<br><em>Line.</em></h1>
-        <p class="intro-description" data-text="introduction">Three installations on the Riemann hypothesis and the proof written in Lean.</p>
+        <p class="intro-description" data-text="introduction">Walk from the first zeta zeros to the argument that rules out a zero off the line.</p>
         <button class="enter" id="enter" type="button"><span data-text="enter">Enter exhibition</span><span class="button-glyph" aria-hidden="true"></span></button>
       </div>
       <div class="intro-caption"><span class="caption-rule"></span><div><strong data-text="caption">The central installation</strong><small>Re(s) = ½</small></div></div>
-      <div class="intro-foot"><a id="open-notes" href="#notes" data-text="notes">Exhibition notes</a><span data-text="controls">Keyboard, mouse or touch</span></div>
+      <div class="intro-foot"><nav class="intro-links"><a id="open-notes" href="#notes" data-text="notes">Exhibition notes</a><a href="./proof.html" data-text="ledger">Proof and Lean source</a></nav><span data-text="controls">Keyboard, mouse or touch</span></div>
     </div>
     <section id="hud" aria-label="Exhibition controls" data-label="hud" hidden>
       <div class="location">
         <p class="overline" id="location-kicker">The exhibition</p>
         <h2 id="location-name">Central Hall</h2>
-        <p id="location-hint">Walk toward an installation or pick a room on the floor plan.</p>
+        <p id="location-hint">Follow the brass trail to the first light.</p>
       </div>
+      <div id="waypoint" class="waypoint" hidden><i aria-hidden="true"></i><span></span></div>
       <div id="aim" aria-hidden="true"></div>
       <button id="engage" class="engage" type="button" hidden><kbd>E</kbd><span data-text="interact">Open installation</span></button>
       <div class="bottom-hud">
         <div class="map-stack">
           <button id="minimap-button" class="minimap-button" type="button" aria-label="Open the floor plan" data-label="minimap">
             <span class="mini-map" aria-hidden="true"><canvas id="mini-canvas"></canvas><i id="mini-you"></i></span>
-            <span id="map-progress">Light fragments 0 / 3</span>
+            <span id="map-progress">Light fragments 0 / 7</span>
           </button>
           <button class="action finale-button" id="finale" type="button" data-text="ignite" hidden>Light the central piece</button>
         </div>
-        <p class="keyboard-help"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> <span data-text="walk">Move</span> <i>·</i> <span data-text="drag">Drag to look</span> <i>·</i> <kbd>E</kbd> <span data-text="use">Interact</span></p>
+        <p class="keyboard-help"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> <span data-text="walk">Move</span> <i>·</i> <span data-text="drag">Drag to look</span> <i>·</i> <kbd>E</kbd> <span data-text="use">Interact</span> <i>·</i> <kbd>Space</kbd> <span data-text="jump">Jump</span> <i>·</i> <kbd>F</kbd> <span data-text="punch">Punch</span></p>
+        <div class="touch-actions"><button type="button" data-action="jump" data-text="jump">Jump</button><button type="button" data-action="punch" data-text="punch">Punch</button></div>
         <div class="touch-arrows" aria-label="Movement" data-label="movement"><button type="button" data-move="KeyW" aria-label="Forward" data-label="forward">▲</button><div><button type="button" data-move="KeyA" aria-label="Left" data-label="left">◀</button><button type="button" data-move="KeyS" aria-label="Back" data-label="back">▼</button><button type="button" data-move="KeyD" aria-label="Right" data-label="right">▶</button></div></div>
       </div>
     </section>
+    <div id="player-hands" class="player-hands" aria-hidden="true"><div class="glove glove-left"><i></i></div><div class="glove glove-right"><i></i></div></div>
     <div id="piece-handles" aria-hidden="true"></div>
     <section class="exhibit" id="panel" aria-labelledby="panel-title" hidden>
       <header class="panel-header"><div><p class="overline" id="panel-kicker"></p><h2 id="panel-title"></h2></div><button type="button" class="close" id="close-panel" aria-label="Close installation" data-label="closePanel">×</button></header>
       <p class="instruction" id="instruction"></p>
       <div id="puzzle"></div>
       <div class="panel-bottom">
-        <details id="context"><summary data-text="context">The mathematics</summary><p id="context-body"></p><a id="context-link" target="_blank" rel="noopener" data-text="source">Read the source</a></details>
-        <div id="panel-complete" hidden><span id="collected"></span><button type="button" class="tiny-button" id="next-room">Next installation</button></div>
+        <details id="context"><summary data-text="context">The mathematics</summary><p id="context-body"></p><nav class="panel-sources"><a id="context-link" target="_blank" rel="noopener" data-text="source">Read the source</a><a id="room-ledger" data-text="ledger" href="./proof.html" target="_blank" rel="noopener">Proof and Lean source</a></nav></details>
+        <div id="panel-complete" hidden><span id="collected"></span><button type="button" class="tiny-button" id="next-room">Back to the gallery</button></div>
         <p class="feedback" id="feedback" aria-live="polite"></p>
       </div>
     </section>
@@ -75,7 +77,7 @@
     <div id="final-card" class="final-card" hidden>
       <p class="overline" data-text="complete">Exhibition complete</p>
       <h2 data-text="ending">A Line of Light.</h2>
-      <p data-text="endingText">The three fragments meet in the central hall.</p>
+      <p data-text="endingText">The seven fragments meet in the central hall.</p>
       <button type="button" class="tiny-button" id="close-final" data-text="returnHall">Back to the hall</button>
     </div>
     <dialog id="map" aria-labelledby="map-title">
@@ -87,17 +89,22 @@
         <span id="floor-axis" class="floor-marker">Re(s) = ½</span>
         <div class="room-links">
           <button type="button" data-room="0"><span class="room-number">01</span><b class="room-name">The Critical Line</b><small></small></button>
-          <button type="button" data-room="1"><span class="room-number">02</span><b class="room-name">The Mirror</b><small></small></button>
-          <button type="button" data-room="2"><span class="room-number">03</span><b class="room-name">Proof Relay</b><small></small></button>
+          <button type="button" data-room="3"><span class="room-number">02</span><b class="room-name">The Prime Signal</b><small></small></button>
+          <button type="button" data-room="4"><span class="room-number">03</span><b class="room-name">The Inert Primes</b><small></small></button>
+          <button type="button" data-room="5"><span class="room-number">04</span><b class="room-name">The Theta Chain</b><small></small></button>
+          <button type="button" data-room="6"><span class="room-number">05</span><b class="room-name">The Zero-Free Half</b><small></small></button>
+          <button type="button" data-room="1"><span class="room-number">06</span><b class="room-name">The Mirror</b><small></small></button>
+          <button type="button" data-room="2"><span class="room-number">07</span><b class="room-name">Proof Relay</b><small></small></button>
         </div>
       </div>
-      <div class="plan-caption"><span><i aria-hidden="true"></i><span id="map-location">You are here - Central Hall</span></span><span data-text="pickRoom">Choose any installation to go there.</span></div>
+      <div class="plan-caption"><span><i aria-hidden="true"></i><span id="map-location">You are here - Central Hall</span></span><span data-text="pickRoom">Set a waypoint, then walk the marked route.</span></div>
       <div class="dialog-foot"><button class="text-link" type="button" id="return-hall" data-text="hall">Central Hall</button><button class="text-link" id="map-notes" type="button" data-text="notes">Exhibition notes</button></div>
     </dialog>
     <dialog id="notes" aria-labelledby="notes-title">
       <div class="dialog-head"><h2 id="notes-title" data-text="notes">Exhibition notes</h2><form method="dialog"><button class="close" aria-label="Close exhibition notes" data-label="closeNotes">×</button></form></div>
-      <p data-text="notesText">The puzzles are based on the critical line, the symmetry of the functional equation, and the published checks of the Lean proof.</p>
+      <p data-text="notesText">The seven installations trace the proof from prime powers to a zero-free half-plane, then to the critical line and the Lean checks.</p>
       <ul class="source-links">
+        <li><a href="./proof.html" data-text="ledger">Proof and Lean source</a></li>
         <li><a href="https://alpo.ge/remark.pdf" target="_blank" rel="noopener" data-text="announcement">Levent Alpöge’s proof announcement</a></li>
         <li><a href="https://leanprover-community.github.io/blog/posts/riemann-hypothesis/" target="_blank" rel="noopener" data-text="leanStatement">Lean and Mathlib’s joint statement</a></li>
         <li><a href="https://math.mit.edu/~drew/grh/" target="_blank" rel="noopener" data-text="independent">Andrew Sutherland’s verification record</a></li>

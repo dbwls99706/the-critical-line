@@ -1,8 +1,10 @@
 import { createWorld } from './museum-world.mjs';
-import { hall } from './gallery-layout.mjs';
-import { attachPlans, placeOnPlan } from './museum-plan.mjs';
+import { hall, proofOrder, stations } from './gallery-layout.mjs';
+import { attachPlans, placeOnPlan, showPlanTarget } from './museum-plan.mjs';
 import { mountZeroAtlas } from './zero-atlas.mjs';
 import { copy, getLanguage, saveLanguage } from './museum-i18n.mjs';
+import { proofCopy, proofLinks } from './proof-copy.mjs';
+import { workshops } from './proof-workbench.mjs';
 
 const get = (id) => document.getElementById(id);
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -11,45 +13,54 @@ const hud = get('hud');
 const panel = get('panel');
 const map = get('map');
 const notes = get('notes');
-const fadeOverlay = get('fade');
 const feedback = get('feedback');
 const languageButtons = [...document.querySelectorAll('[data-language]')];
+const compass = get('waypoint');
+const returnTarget = {x: 0, z: -.65};
 const routeButtons = [...document.querySelectorAll('[data-room]')].filter((item) => item.tagName === 'BUTTON');
 const handlesLayer = get('piece-handles');
 let sceneHandles = [];
 const progressKey = 'riemann-exhibit-shards-v1';
 const mainHash = '017645ca448f2fd1f6fd5c4c2cb2c6e96e472725be13f6e180ca6e1574360939';
+const proofSize = stations.length;
 const waveHeights = ['14.1347', '25.0109', '32.9351'];
 
-const exhibits = [
-  {url: 'https://www.claymath.org/millennium/riemann-hypothesis/', initial: [-1.25, .90, -1.45], color: '#a2e7f3'},
-  {url: 'https://dlmf.nist.gov/25.4', initial: [1], color: '#f4a9a7'},
-  {url: 'https://math.mit.edu/~drew/grh/', initial: [], color: '#f2cf95'},
+const initialValues = [
+  [-1.25, .90, -1.45], [1], [], [12, 0], [0], [4, .7, 2], [.47, 0, 0],
 ];
-
+const completedValues = [
+  [0, 0, 0], [6], [], [32, 1], [11], [4, 2, 1], [.75, 28, 1],
+];
 let language = getLanguage();
-let words = copy[language];
+
+function localizedCopy() {
+  const {rooms, ...writing} = proofCopy[language];
+  const base = copy[language];
+  return {...base, ...writing, rooms: [...base.rooms, ...Object.values(rooms)]};
+}
+
+let words = localizedCopy();
 
 let world;
 let started = false;
 let activeRoom = null;
 let nearby = -1;
-let transitioning = false;
-let transitionTicket = 0;
 let toastTimer;
 let finaleTimer;
 let kernelCheck = null;
 let audio;
 let preservedFocus;
 let lastLocation = -2;
-let lastGuided = false;
+let targetRoom = 0;
+let lastPunch = -Infinity;
+let punchLeft = false;
 let visitorX = hall.x;
 let visitorZ = hall.z;
 
 function loadedProgress() {
   try {
     const stored = JSON.parse(localStorage.getItem(progressKey) || '[]');
-    if (Array.isArray(stored)) return new Set(stored.filter((item) => Number.isInteger(item) && item >= 0 && item < 3));
+    if (Array.isArray(stored)) return new Set(stored.filter((item) => Number.isInteger(item) && item >= 0 && item < proofSize));
   } catch {}
   return new Set();
 }
@@ -58,9 +69,9 @@ let earned = loadedProgress();
 let states = freshStates();
 
 function freshStates() {
-  return exhibits.map(({initial}, i) => ({
-    values: earned.has(i) ? i === 0 ? [0, 0, 0] : i === 1 ? [6] : [] : [...initial],
-    count: earned.has(i) && i === 2 ? 3 : 0,
+  return initialValues.map((initial, i) => ({
+    values: [...(earned.has(i) ? completedValues[i] : initial)],
+    count: earned.has(i) && [2, 4, 5].includes(i) ? 3 : 0,
     done: earned.has(i),
   }));
 }
@@ -77,10 +88,9 @@ function announce(text) {
   toastTimer = setTimeout(() => toast.classList.remove('visible'), 3500);
 }
 
-function updateFrame(x, z, room, guided) {
-  if (room !== lastLocation || guided !== lastGuided) {
+function updateFrame(x, z, room, yaw) {
+  if (room !== lastLocation) {
     lastLocation = room;
-    lastGuided = guided;
     nearby = room;
     renderLocation(room);
   }
@@ -89,7 +99,15 @@ function updateFrame(x, z, room, guided) {
     visitorZ = z;
     placeOnPlan(get('mini-you'), x, z);
     if (map.open) placeOnPlan(get('floor-you'), x, z);
+    renderFinaleButton();
   }
+  const target = targetRoom === null ? returnTarget : stations[targetRoom];
+  if (target) {
+    const delta = Math.atan2(-(target.x - x), -(target.z - z)) - yaw;
+    compass.style.setProperty('--bearing', `${-delta}rad`);
+  }
+  compass.hidden = !target || !world || nearby === targetRoom || activeRoom !== null ||
+    (targetRoom === null && Math.hypot(x, z + 4) < 5.8);
   if (activeRoom !== null && sceneHandles.length > 0) {
     const points = world.handlePositions(activeRoom);
     sceneHandles.forEach((handle, i) => {
@@ -108,13 +126,14 @@ function renderLocation(room) {
   const title = exhibit?.title ?? words.hall;
   get('location-name').textContent = title;
   get('map-location').textContent = words.mapLocation(title);
-  get('location-hint').textContent = exhibit?.hint ?? (started && !world ? words.no3d : words.hallHint);
+  get('location-hint').textContent = exhibit?.hint ?? (started && !world ? words.no3d :
+    targetRoom === null ? words.finishHint : words.hallHint);
   get('engage').hidden = !exhibit || activeRoom !== null || !get('final-card').hidden;
   get('engage').querySelector('span').textContent = words.interact;
 }
 
 function galleryLabel(room) {
-  return '0' + (room + 1) + ' / ' + words.rooms[room].category;
+  return '0' + (proofOrder.indexOf(room) + 1) + ' / ' + words.rooms[room].category;
 }
 
 function renderLanguage() {
@@ -138,11 +157,12 @@ function renderLanguage() {
   renderLocation(nearby);
   if (activeRoom !== null) openPanel(activeRoom, false);
   updateProgress();
+  renderWaypoint();
 }
 
 function syncWorld() {
   world?.setStates(states);
-  world?.suspend(!started || transitioning || activeRoom !== null || map.open || notes.open || !get('final-card').hidden);
+  world?.suspend(!started || activeRoom !== null || map.open || notes.open || !get('final-card').hidden);
 }
 
 function updateProgress() {
@@ -151,8 +171,36 @@ function updateProgress() {
     const completed = earned.has(Number(link.dataset.room));
     link.querySelector('small').textContent = completed ? words.visits : '';
   }
-  get('finale').hidden = earned.size !== 3;
+  renderFinaleButton();
   world?.setStates(states);
+}
+
+function renderFinaleButton() {
+  get('finale').hidden = earned.size !== proofSize || (!!world && Math.hypot(visitorX, visitorZ + 4) >= 5.8);
+}
+
+function renderWaypoint() {
+  const target = targetRoom === null ? returnTarget : stations[targetRoom];
+  const title = targetRoom === null ? words.hall : words.rooms[targetRoom]?.title;
+  compass.querySelector('span').textContent = title ? words.waypoint(title) : '';
+  compass.hidden = !target || !world || !started;
+  world?.waypoint(target ?? null);
+  showPlanTarget(target ?? null);
+  for (const button of routeButtons) {
+    button.setAttribute('aria-pressed', String(Number(button.dataset.room) === targetRoom));
+  }
+}
+
+function pickWaypoint(room, startWalk = true) {
+  if (startWalk) start();
+  closePanel(false);
+  preservedFocus = null;
+  map.close();
+  targetRoom = room;
+  renderWaypoint();
+  renderLocation(nearby);
+  if (!world && startWalk && room !== null) openPanel(room);
+  else if (startWalk) get('minimap-button').focus({preventScroll: true});
 }
 
 function start() {
@@ -162,6 +210,8 @@ function start() {
   hud.hidden = false;
   document.body.classList.add('playing');
   world?.start();
+  targetRoom = proofOrder.find((room) => !earned.has(room)) ?? null;
+  renderWaypoint();
   syncWorld();
   renderLocation(nearby);
   updateProgress();
@@ -174,6 +224,7 @@ function closePanel(returnFocus = true) {
   sceneHandles = [];
   panel.hidden = true;
   document.body.classList.remove('puzzle-open');
+  world?.releaseFocus();
   lastLocation = -2;
   syncWorld();
   if (returnFocus) {
@@ -182,41 +233,12 @@ function closePanel(returnFocus = true) {
   }
 }
 
-function useFade(callback) {
-  const ticket = ++transitionTicket;
-  transitioning = true;
-  fadeOverlay.classList.add('active');
-  syncWorld();
-  setTimeout(() => {
-    if (ticket !== transitionTicket) return;
-    callback();
-    fadeOverlay.classList.remove('active');
-    transitioning = false;
-    syncWorld();
-  }, reducedMotion ? 0 : 220);
-}
-
-function travel(room, jumpPanel = true) {
-  start();
-  closePanel(false);
-  get('final-card').hidden = true;
-  clearTimeout(finaleTimer);
-  world?.finale(false);
-  map.close();
-  useFade(() => {
-    world?.goTo(room);
-    if (room !== null && jumpPanel) openPanel(room);
-    else get('minimap-button').focus({preventScroll: true});
-  });
-}
-
 function setPanelCompletion(room) {
   const complete = earned.has(room);
   get('panel-complete').hidden = !complete;
   if (!complete) return;
   get('collected').textContent = words.collected(earned.size);
-  const hasNext = exhibits.some((_, index) => !earned.has(index));
-  get('next-room').textContent = hasNext ? words.next : words.ignite;
+  get('next-room').textContent = words.next;
 }
 
 function complete(room) {
@@ -226,8 +248,12 @@ function complete(room) {
   persist();
   updateProgress();
   if (activeRoom === room) setPanelCompletion(room);
-  announce(earned.size === 3 ? words.allFragments : words.fragment);
-  chime(earned.size === 3 ? [440, 554.37, 659.25, 880] : [392, 523.25, 659.25]);
+  if (targetRoom === room) {
+    targetRoom = proofOrder.find((item) => !earned.has(item)) ?? null;
+    renderWaypoint();
+  }
+  announce(earned.size === proofSize ? words.allFragments : words.fragment);
+  chime(earned.size === proofSize ? [440, 554.37, 659.25, 880] : [392, 523.25, 659.25]);
 }
 
 function addSlider(container, labelText, accessibleLabel, minimum, maximum, step, value, onChange) {
@@ -276,9 +302,20 @@ function criticalPuzzle(root) {
 
 function reflectionPuzzle(root) {
   const state = states[1];
+  const model = document.createElement('div');
+  model.className = 'mirror-model';
+  const candidate = document.createElement('strong');
+  const axis = document.createElement('span');
+  const partner = document.createElement('strong');
+  candidate.textContent = 'β + it';
+  axis.textContent = 'Re s = ½';
+  partner.textContent = '(1 − β) + it';
+  model.append(candidate, axis, partner);
+  root.append(model);
   const control = addSlider(root, words.rotation, words.rotationSlider, 0, 11, 1, state.values[0], (value, output, input) => {
     state.values[0] = value;
     const aligned = value === 6;
+    model.classList.toggle('paired', aligned);
     output.textContent = value * 30 + '°';
     input.classList.toggle('aligned', aligned);
     input.setAttribute('aria-valuetext', words.degrees(value * 30));
@@ -364,7 +401,7 @@ function addHandles(room, root) {
   controls.forEach((control, i) => {
     const handle = document.createElement('div');
     handle.className = 'piece-handle';
-    handle.style.setProperty('--handle-color', exhibits[room].color);
+    handle.style.setProperty('--handle-color', stationColor(room));
     let held = false;
     handle.addEventListener('pointerdown', (event) => {
       held = true;
@@ -386,11 +423,15 @@ function addHandles(room, root) {
   });
 }
 
+const stationColor = (room) => '#' + stations[room].color.toString(16).padStart(6, '0');
+
 function openPanel(room, focus = true) {
+  if (activeRoom === null) world?.focus(room);
   const contextWasOpen = activeRoom === room && get('context').open;
   const exhibit = words.rooms[room];
   activeRoom = room;
   panel.dataset.room = room;
+  panel.style.setProperty('--exhibit', stationColor(room));
   panel.hidden = false;
   document.body.classList.add('puzzle-open');
   get('engage').hidden = true;
@@ -399,11 +440,21 @@ function openPanel(room, focus = true) {
   get('instruction').textContent = exhibit.instruction;
   get('context').open = contextWasOpen;
   get('context-body').textContent = exhibit.context;
-  get('context-link').href = exhibits[room].url;
+  const [url, declaration] = proofLinks[room];
+  const source = get('context-link');
+  source.href = url;
+  source.textContent = declaration + ' · Lean';
+  get('room-ledger').href = './proof.html#step-' + (proofOrder.indexOf(room) + 1);
   feedback.textContent = '';
   const root = get('puzzle');
   root.replaceChildren();
-  puzzleScenes[room](root);
+  if (workshops[room]) {
+    workshops[room](root, {
+      state: states[room], words, complete: () => complete(room),
+      say: (text) => { if (feedback.textContent !== text) feedback.textContent = text; },
+      slider: (label, min, max, step, value, change) => addSlider(root, label, label, min, max, step, value, change),
+    });
+  } else puzzleScenes[room](root);
   addHandles(room, root);
   setPanelCompletion(room);
   syncWorld();
@@ -421,7 +472,7 @@ function showDialog(dialog, trigger) {
 for (const dialog of [map, notes]) {
   dialog.addEventListener('close', () => {
     syncWorld();
-    if (!transitioning && preservedFocus?.isConnected) preservedFocus.focus({preventScroll: true});
+    if (preservedFocus?.isConnected) preservedFocus.focus({preventScroll: true});
   });
   dialog.addEventListener('click', (event) => {
     if (event.target === dialog) dialog.close();
@@ -429,8 +480,8 @@ for (const dialog of [map, notes]) {
 }
 
 function showFinale() {
-  if (earned.size < 3) return;
-  travel(null, false);
+  if (get('finale').hidden) return;
+  world?.focus(null);
   clearTimeout(finaleTimer);
   finaleTimer = setTimeout(() => {
     world?.finale(true);
@@ -453,21 +504,17 @@ get('open-map').addEventListener('click', (event) => showDialog(map, event.curre
 get('minimap-button').addEventListener('click', (event) => showDialog(map, event.currentTarget));
 get('open-notes').addEventListener('click', (event) => { event.preventDefault(); showDialog(notes, event.currentTarget); });
 get('map-notes').addEventListener('click', () => { map.close(); showDialog(notes, get('open-map')); });
-get('return-hall').addEventListener('click', () => travel(null));
+get('return-hall').addEventListener('click', () => pickWaypoint(null));
 get('engage').addEventListener('click', () => { if (nearby >= 0) openPanel(nearby); });
 get('close-panel').addEventListener('click', () => closePanel());
 get('finale').addEventListener('click', showFinale);
 get('close-final').addEventListener('click', () => {
   get('final-card').hidden = true;
+  world?.releaseFocus();
   get('finale').focus({preventScroll: true});
   syncWorld();
 });
-get('next-room').addEventListener('click', () => {
-  const current = activeRoom ?? 0;
-  const next = [1, 2, 3].map((offset) => (current + offset) % 3).find((room) => !earned.has(room));
-  if (next !== undefined) travel(next);
-  else showFinale();
-});
+get('next-room').addEventListener('click', () => closePanel());
 get('reset-game').addEventListener('click', () => {
   earned.clear();
   states = freshStates();
@@ -477,12 +524,13 @@ get('reset-game').addEventListener('click', () => {
   clearTimeout(finaleTimer);
   world?.finale(false);
   updateProgress();
+  pickWaypoint(0, false);
   notes.close();
   announce(words.resetDone);
 });
-for (const button of routeButtons) button.addEventListener('click', () => travel(Number(button.dataset.room)));
+for (const button of routeButtons) button.addEventListener('click', () => pickWaypoint(Number(button.dataset.room)));
 
-const movementKeys = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ShiftLeft']);
+const movementKeys = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ShiftLeft', 'ShiftRight']);
 window.addEventListener('keydown', (event) => {
   if (!started || map.open || notes.open || event.metaKey || event.ctrlKey || event.altKey) return;
   if (event.code === 'Escape' && activeRoom !== null) {
@@ -490,7 +538,14 @@ window.addEventListener('keydown', (event) => {
     closePanel();
     return;
   }
-  if (activeRoom !== null || transitioning || !get('final-card').hidden) return;
+  if (activeRoom !== null || !get('final-card').hidden) return;
+  if (event.code === 'Space' && event.target.closest?.('button') &&
+      !['minimap-button', 'engage'].includes(event.target.id)) return;
+  if (event.code === 'Space' || event.code === 'KeyF') {
+    event.preventDefault();
+    if (!event.repeat) performAction(event.code === 'Space' ? 'jump' : 'punch');
+    return;
+  }
   if (event.code === 'KeyE' && nearby >= 0 && !event.repeat) {
     openPanel(nearby);
     return;
@@ -510,6 +565,30 @@ for (const button of document.querySelectorAll('[data-move]')) {
   for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) {
     button.addEventListener(type, () => world?.keys.delete(button.dataset.move));
   }
+}
+
+function performAction(action) {
+  if (!started || !world || activeRoom !== null || map.open || notes.open || !get('final-card').hidden) return;
+  if (action === 'jump') {
+    if (world.jump()) chime([147], .04);
+    return;
+  }
+  const now = performance.now();
+  if (now - lastPunch < 270) return;
+  lastPunch = now;
+  punchLeft = !punchLeft;
+  const glove = get('player-hands').children[punchLeft ? 0 : 1];
+  glove.classList.remove('striking');
+  void glove.offsetWidth;
+  glove.classList.add('striking');
+  if (world.punch()) chime([352, 528, 711], .045);
+}
+
+for (const button of document.querySelectorAll('[data-action]')) {
+  button.addEventListener('click', () => performAction(button.dataset.action));
+}
+for (const glove of get('player-hands').children) {
+  glove.addEventListener('animationend', () => glove.classList.remove('striking'));
 }
 
 function soundSetup() {
@@ -568,7 +647,6 @@ get('sound').addEventListener('click', async (event) => {
 try {
   world = createWorld(get('world'), updateFrame, (room) => {
     if (room === nearby) openPanel(room);
-    else travel(room);
   }, reducedMotion);
   world.setStates(states);
 } catch (error) {
@@ -579,7 +657,7 @@ for (const button of languageButtons) {
   button.addEventListener('click', () => {
     if (button.dataset.language === language) return;
     language = button.dataset.language;
-    words = copy[language];
+    words = localizedCopy();
     saveLanguage(language);
     renderLanguage();
   });

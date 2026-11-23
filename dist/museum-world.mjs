@@ -4,10 +4,12 @@ import { createExhibits } from './museum-exhibits.mjs';
 import { createCanvasRenderer } from './museum-canvas.mjs';
 
 import { drawZeroAtlas } from './zero-atlas.mjs';
-import { columnRows, columnX, hall, routes, stations } from './gallery-layout.mjs';
+import { building, columnRows, columnX, hall, portals, proofOrder, spine, stations } from './gallery-layout.mjs';
 
-const borders = {left: -12.1, right: 12.1, front: 10.1, back: -24.4};
-const columns = [];
+const borders = {left: building.left + .8, right: building.right - .8, front: building.entrance - .8, back: building.back + .8};
+const aisleLength = building.entrance - building.back;
+const aisleMid = (building.entrance + building.back) / 2;
+const bellPosition = [2.85, 5.35];
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const unitCube = new THREE.BoxGeometry(1, 1, 1);
 const ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
@@ -92,7 +94,7 @@ function artworkSign(parent, title, label, position, ink) {
   context.fillText(label, 384, 59);
   context.fillStyle = '#f9eed5';
   context.font = '400 64px "Times New Roman", Georgia, serif';
-  context.fillText(title, 384, 127);
+  context.fillText(title, 384, 127, 690);
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   const sign = finish(parent, new THREE.PlaneGeometry(2.55, .64),
@@ -115,28 +117,27 @@ function makeRoom(scene) {
   const panel = new THREE.MeshStandardMaterial({color: 0x77706a, map: marble, roughness: .68});
   const dark = new THREE.MeshStandardMaterial({color: 0x1d1b22, map: marble, roughness: .72});
   const bronze = new THREE.MeshStandardMaterial({color: 0x837052, metalness: .4, roughness: .39});
-  const limestone = new THREE.MeshStandardMaterial({color: 0x4b4040, map: mineralTexture(13, 17), roughness: .59});
+  const limestone = new THREE.MeshStandardMaterial({color: 0x4b4040, map: mineralTexture(13, 29), roughness: .59});
   const goldenStrip = new THREE.MeshBasicMaterial({color: 0xeec88d, toneMapped: false});
   const softGold = new THREE.MeshBasicMaterial({color: 0x785738});
   const halo = haloTexture();
 
-  solid(scene, limestone, [26, .28, 36.8], [0, -.14, -7.3]);
-  solid(scene, wall, [25.8, 8.8, .55], [0, 4.4, -25.25]);
-  solid(scene, wall, [25.8, 8.8, .55], [0, 4.4, 10.9]);
-  solid(scene, wall, [.55, 8.8, 36.9], [-12.9, 4.4, -7.25]);
-  solid(scene, wall, [.55, 8.8, 36.9], [12.9, 4.4, -7.25]);
-  solid(scene, dark, [25.8, .4, 36.7], [0, 8.4, -7.25]);
+  solid(scene, limestone, [26, .28, aisleLength + .6], [0, -.14, aisleMid]);
+  solid(scene, wall, [25.8, 8.8, .55], [0, 4.4, building.back]);
+  solid(scene, wall, [25.8, 8.8, .55], [0, 4.4, building.entrance]);
+  solid(scene, wall, [.55, 8.8, aisleLength], [building.left, 4.4, aisleMid]);
+  solid(scene, wall, [.55, 8.8, aisleLength], [building.right, 4.4, aisleMid]);
+  solid(scene, dark, [25.8, .4, aisleLength], [0, 8.4, aisleMid]);
   for (const side of [-1, 1]) {
-    solid(scene, panel, [.27, .4, 36.15], [side * 12.47, .23, -7.25]);
-    solid(scene, bronze, [.11, .04, 35.6], [side * 3.1, .008, -7.25]);
-    solid(scene, dark, [3.6, .25, 35.7], [side * 8.15, 7.9, -7.2]);
-    solid(scene, softGold, [.046, .037, 33.6], [side * (columnX + .05), 7.67, -7.2]);
+    solid(scene, panel, [.27, .4, aisleLength - .55], [side * 12.47, .23, aisleMid]);
+    solid(scene, bronze, [.11, .04, aisleLength - .8], [side * 3.1, .008, aisleMid]);
+    solid(scene, dark, [3.6, .25, aisleLength - .8], [side * 8.15, 7.9, aisleMid]);
+    solid(scene, softGold, [.046, .037, aisleLength - .8], [side * (columnX + .05), 7.67, aisleMid]);
     for (const z of columnRows) {
       solid(scene, panel, [.7, 7.9, .76], [side * columnX, 3.95, z]);
       solid(scene, dark, [1.05, .25, 1.06], [side * columnX, .13, z]);
       solid(scene, bronze, [.77, .12, .83], [side * columnX, 6.9, z]);
       solid(scene, goldenStrip, [.022, 4.9, .025], [side * columnX - side * .355, 4.1, z + .385]);
-      columns.push([side * columnX, z, .55]);
       if (side === -1 && z === .55) continue;
       solid(scene, panel, [.15, 6.9, 3.95], [side * 12.55, 3.62, z - 1.2]);
       solid(scene, bronze, [.023, 6.8, 3.98], [side * 12.46, 3.65, z - 1.2]);
@@ -154,23 +155,25 @@ function makeRoom(scene) {
   atlas.rotation.y = Math.PI / 2;
   atlas.userData.paintedPlane = true;
 
-  routes.forEach((path, index) => {
-    const material = new THREE.MeshBasicMaterial({color: stations[index].color, transparent: true, opacity: .48});
-    for (let segment = 1; segment < path.length; segment++) {
-      const [x0, z0] = path[segment - 1];
-      const [x1, z1] = path[segment];
-      const steps = Math.ceil(Math.hypot(x1 - x0, z1 - z0) / .64);
-      for (let i = 0; i < steps; i++) {
-        const t = (i + .5) / steps;
-        solid(scene, material, [x0 === x1 ? .034 : .24, .018, z0 === z1 ? .034 : .24],
-          [THREE.MathUtils.lerp(x0, x1, t), .012, THREE.MathUtils.lerp(z0, z1, t)]);
-      }
+  const trail = new THREE.MeshBasicMaterial({color: 0xd8a76d, transparent: true, opacity: .48});
+  const segments = new Set();
+  for (let segment = 1; segment < spine.length; segment++) {
+    const [x0, z0] = spine[segment - 1];
+    const [x1, z1] = spine[segment];
+    const key = [spine[segment - 1].join(','), spine[segment].join(',')].sort().join('|');
+    if (segments.has(key)) continue;
+    segments.add(key);
+    const steps = Math.ceil(Math.hypot(x1 - x0, z1 - z0) / .68);
+    for (let i = 0; i < steps; i++) {
+      const t = (i + .5) / steps;
+      solid(scene, trail, [x0 === x1 ? .037 : .24, .018, z0 === z1 ? .037 : .24],
+        [THREE.MathUtils.lerp(x0, x1, t), .016, THREE.MathUtils.lerp(z0, z1, t)]);
     }
-  });
+  }
 
   const floorSeams = [];
-  for (let x = -12; x <= 12; x += 2) floorSeams.push(x, .008, -25, x, .008, 10.55);
-  for (let z = -24; z < 11; z += 2) floorSeams.push(-12.5, .008, z, 12.5, .008, z);
+  for (let x = -12; x <= 12; x += 2) floorSeams.push(x, .008, building.back + .3, x, .008, building.entrance - .3);
+  for (let z = -54; z < 11; z += 2) floorSeams.push(-12.5, .008, z, 12.5, .008, z);
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(floorSeams, 3));
   scene.add(new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({color: 0x645048, transparent: true, opacity: .48})));
@@ -180,10 +183,10 @@ function makeRoom(scene) {
     solid(scene, bronze, [11.17, .12, .61], [0, 7.46, z]);
     solid(scene, goldenStrip, [6.1, .026, .053], [0, 7.39, z]);
   }
-  solid(scene, dark, [4.3, .24, 33.1], [0, 8.1, -7.15]);
-  solid(scene, softGold, [2.84, .025, 30.9], [0, 7.966, -7.15]);
+  solid(scene, dark, [4.3, .24, aisleLength - 1.7], [0, 8.1, aisleMid]);
+  solid(scene, softGold, [2.84, .025, aisleLength - 2.25], [0, 7.966, aisleMid]);
   for (const x of [-1.43, 1.43]) {
-    solid(scene, goldenStrip, [.055, .035, 31.02], [x, 7.952, -7.15]);
+    solid(scene, goldenStrip, [.055, .035, aisleLength - 2.1], [x, 7.952, aisleMid]);
   }
 
   solid(scene, dark, [7.6, .23, 6.25], [0, .11, -4.15]);
@@ -199,8 +202,8 @@ function makeRoom(scene) {
   stations.forEach((station, index) => {
     const {aimX: x, aimZ: z, color, name} = station;
     const bright = new THREE.MeshBasicMaterial({color, toneMapped: false});
-    const bayWidth = index === 2 ? 8.65 : 5.2;
-    const wallZ = index === 2 ? -23.4 : -16.35;
+    const bayWidth = station.width ?? 5.2;
+    const wallZ = station.wallZ;
     solid(scene, dark, [bayWidth, 5.85, .35], [x, 3.14, wallZ]);
     solid(scene, panel, [bayWidth + .32, .26, .7], [x, .15, wallZ]);
     solid(scene, panel, [bayWidth + .32, .36, .64], [x, 6.12, wallZ]);
@@ -218,12 +221,36 @@ function makeRoom(scene) {
     finish(scene, new THREE.RingGeometry(1.37, 1.4, 72), bright, x, .8, z, -Math.PI / 2);
     spotHalo(scene, halo, color, x, .222, z + .5, 4.55, 4.85, .31);
     spotHalo(scene, halo, color, x, .015, z + 4.5, 3.8, 5.4, .18);
-    artworkSign(scene, name, String(index + 1).padStart(2, '0'), [x, 4.98, wallZ + .29],
+    artworkSign(scene, name, String(proofOrder.indexOf(index) + 1).padStart(2, '0'), [x, 4.98, wallZ + .29],
       '#' + new THREE.Color(color).getHexString());
-    const light = new THREE.PointLight(color, 32, 10, 2);
+    const light = new THREE.PointLight(color, 29, 9, 2);
     light.position.set(x, 3.1, z + 1.3);
     scene.add(light);
   });
+
+  const galleryNames = [
+    [portals[0], 'Arithmetic Wing', 'LOCAL DATA / GLOBAL BOUNDS'],
+    [portals[1], 'The Analytic Wing', 'THE ZERO-FREE HALF / SYMMETRY'],
+  ];
+  for (const [z, name, theme] of galleryNames) {
+    solid(scene, dark, [10.8, .64, .54], [0, 6.52, z]);
+    solid(scene, bronze, [10.9, .028, .62], [0, 6.19, z]);
+    for (const side of [-1, 1]) {
+      solid(scene, bronze, [.36, 6.2, .54], [side * 4.45, 3.1, z]);
+      solid(scene, goldenStrip, [.028, 4.6, .032], [side * 4.45, 3.85, z + .3]);
+    }
+    const plaque = artworkSign(scene, name, theme, [0, 6.53, z + .29], '#efc690');
+    plaque.scale.setScalar(1.65);
+  }
+  const belltower = new THREE.Group();
+  const [bx, bz] = bellPosition;
+  belltower.position.set(bx, 1.65, bz);
+  scene.add(belltower);
+  finish(scene, new THREE.CylinderGeometry(.41, .57, .22, 24), bronze, bx, .12, bz);
+  finish(scene, new THREE.CylinderGeometry(.105, .13, 2.63, 12), bronze, bx, 1.42, bz - .4);
+  finish(belltower, new THREE.CylinderGeometry(.135, .32, .36, 32), bronze, 0, .04, 0);
+  finish(belltower, new THREE.RingGeometry(.23, .315, 36), goldenStrip, 0, -.13, 0, -Math.PI / 2);
+  const bellGlow = spotHalo(scene, halo, 0xffcb82, bx, .02, bz, 2.2, 2.2, .15);
 
   const centerLight = new THREE.PointLight(0xffb879, 70, 14, 2);
   centerLight.position.set(.9, 4.8, -3.75);
@@ -234,7 +261,7 @@ function makeRoom(scene) {
   const overhead = new THREE.DirectionalLight(0xddc09e, 1.08);
   overhead.position.set(-4, 12, 5);
   scene.add(overhead, new THREE.HemisphereLight(0xf9e4d5, 0x675a77, 1.58));
-  return centerLight;
+  return {centerLight, belltower, bellGlow};
 }
 
 function makeDust(scene, texture, count) {
@@ -293,8 +320,8 @@ export function createWorld(canvas, onFrame, onPick, reducedMotion) {
   renderer.toneMappingExposure = 1.1;
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x211a20);
-  scene.fog = new THREE.FogExp2(0x21191f, .026);
-  const camera = new THREE.PerspectiveCamera(57, 1, .09, 75);
+  scene.fog = new THREE.FogExp2(0x21191f, .023);
+  const camera = new THREE.PerspectiveCamera(57, 1, .09, 95);
   camera.rotation.order = 'YXZ';
   const art = createSculpture(THREE);
   art.root.position.set(0, 2.87, -4);
@@ -312,7 +339,7 @@ export function createWorld(canvas, onFrame, onPick, reducedMotion) {
     return collider;
   });
   const architecture = new THREE.Group();
-  const light = makeRoom(architecture);
+  const {centerLight, belltower, bellGlow} = makeRoom(architecture);
   scene.userData.architecture = architecture;
   scene.add(architecture);
   const haze = haloTexture();
@@ -327,12 +354,13 @@ export function createWorld(canvas, onFrame, onPick, reducedMotion) {
   const pointer = new THREE.Vector2();
   const exhibitPlane = new THREE.Plane();
   const projected = new THREE.Vector3();
-  const blocked = [...columns, [0, -4, 2.05],
+  const columns = columnRows.flatMap((z) => [-columnX, columnX].map((x) => [x, z, .77]));
+  const posts = portals.flatMap((z) => [-4.45, 4.45].map((x) => [x, z, .58]));
+  const blocked = [...columns, ...posts, [0, -4, 2.05], [...bellPosition, .63],
     ...stations.map((point) => [point.aimX, point.aimZ, 1.85])];
   let states = [];
   let playing = false;
   let suspended = false;
-  let guided = false;
   let dragging;
   let travel;
   let finalAt = null;
@@ -345,6 +373,16 @@ export function createWorld(canvas, onFrame, onPick, reducedMotion) {
   let targetYaw = 0;
   let targetPitch = 0;
   let suppressClick = false;
+  let jumpHeight = 0;
+  let jumpVelocity = 0;
+  let hitAt = -Infinity;
+  let returnView = null;
+  let waypoint = null;
+  const beaconGeometry = new THREE.RingGeometry(.58, .62, 44);
+  const beacon = finish(scene, beaconGeometry, new THREE.MeshBasicMaterial({
+    color: 0xffd292, transparent: true, opacity: .85, toneMapped: false, depthWrite: false,
+  }), 0, .04, 0, -Math.PI / 2);
+  beacon.visible = false;
 
   function place(room, eyeHeight = 2.03) {
     camera.position.set(room.x, eyeHeight, room.z);
@@ -354,6 +392,7 @@ export function createWorld(canvas, onFrame, onPick, reducedMotion) {
     targetPitch = pitch = camera.rotation.x;
     travel = null;
     walkPulse = 0;
+    jumpHeight = jumpVelocity = 0;
   }
 
   function stageIntro(aspect) {
@@ -378,13 +417,20 @@ export function createWorld(canvas, onFrame, onPick, reducedMotion) {
 
   function allowed(x, z) {
     if (x < borders.left || x > borders.right || z < borders.back || z > borders.front) return false;
+    if (stations.some((station) => Math.abs(z - station.wallZ) < .67 &&
+      Math.abs(x - station.aimX) < (station.width ?? 5.2) / 2 + .36)) return false;
     return blocked.every(([obstacleX, obstacleZ, radius]) => Math.hypot(x - obstacleX,z - obstacleZ) > radius);
   }
 
   function move(x, z) {
     const {position} = camera;
-    if (allowed(position.x + x, position.z)) position.x += x;
-    if (allowed(position.x, position.z + z)) position.z += z;
+    const count = Math.max(1, Math.ceil(Math.hypot(x, z) / .26));
+    const dx = x / count;
+    const dz = z / count;
+    for (let step = 0; step < count; step++) {
+      if (allowed(position.x + dx, position.z)) position.x += dx;
+      if (allowed(position.x, position.z + dz)) position.z += dz;
+    }
   }
 
   canvas.addEventListener('pointerdown', (event) => {
@@ -402,7 +448,6 @@ export function createWorld(canvas, onFrame, onPick, reducedMotion) {
       targetYaw -= dx * .0034;
       targetPitch = clamp(targetPitch - dy * .0034, -1.05, 1.03);
       travel = null;
-      guided = false;
     }
     dragging.x = event.clientX;
     dragging.y = event.clientY;
@@ -415,7 +460,7 @@ export function createWorld(canvas, onFrame, onPick, reducedMotion) {
     pointer.set((event.clientX - area.left) / area.width * 2 - 1, -(event.clientY - area.top) / area.height * 2 + 1);
     ray.setFromCamera(pointer, camera);
     const exhibit = ray.intersectObjects(interactionPlanes, false)[0];
-    if (exhibit) {
+    if (exhibit?.object.userData.room === hoveredRoom) {
       travel = null;
       onPick(exhibit.object.userData.room);
       return;
@@ -432,14 +477,12 @@ export function createWorld(canvas, onFrame, onPick, reducedMotion) {
     const steer = Number(keys.has('ArrowLeft')) - Number(keys.has('ArrowRight'));
     if (steer) {
       targetYaw += steer * dt * 1.5;
-      guided = false;
     }
     const front = Number(keys.has('KeyW') || keys.has('ArrowUp')) - Number(keys.has('KeyS') || keys.has('ArrowDown'));
     const side = Number(keys.has('KeyD')) - Number(keys.has('KeyA'));
-    const speed = keys.has('ShiftLeft') ? 7 : 4.4;
+    const speed = keys.has('ShiftLeft') || keys.has('ShiftRight') ? 8.3 : 5.15;
     let moving = false;
     if (front || side) {
-      guided = false;
       travel = null;
       moving = true;
       desired.set(side, 0, -front).normalize().applyAxisAngle(up, yaw).multiplyScalar(speed * dt);
@@ -451,20 +494,25 @@ export function createWorld(canvas, onFrame, onPick, reducedMotion) {
       } else {
         const x = camera.position.x;
         const z = camera.position.z;
-        focusPoint.normalize().multiplyScalar(dt * 5.2);
+        focusPoint.normalize().multiplyScalar(dt * 5.5);
         move(focusPoint.x, focusPoint.y);
         moving = camera.position.x !== x || camera.position.z !== z;
         if (!moving) travel = null;
       }
     }
+    if (jumpHeight > 0 || jumpVelocity > 0) {
+      jumpVelocity -= dt * 19;
+      jumpHeight = Math.max(0, jumpHeight + dt * jumpVelocity);
+      if (!jumpHeight) jumpVelocity = 0;
+    }
     walkPulse = moving ? walkPulse + dt * 10 : 0;
-    const bob = reducedMotion ? 0 : moving ? Math.sin(walkPulse) * .027 : 0;
-    camera.position.y = THREE.MathUtils.lerp(camera.position.y, 2.03 + bob, Math.min(1, dt * 12));
+    const bob = reducedMotion || jumpHeight ? 0 : moving ? Math.sin(walkPulse) * .027 : 0;
+    camera.position.y = 2.03 + bob + jumpHeight;
   }
 
   function draw(nowMs) {
     const time = nowMs / 1000;
-    const dt = Math.min(.06, Math.max(0, time - last));
+    const dt = Math.min(.13, Math.max(0, time - last));
     last = time;
     step(dt);
     const rotationSpeed = reducedMotion ? 1 : Math.min(1, dt * 12);
@@ -472,9 +520,9 @@ export function createWorld(canvas, onFrame, onPick, reducedMotion) {
     pitch = THREE.MathUtils.lerp(pitch, targetPitch, rotationSpeed);
     camera.rotation.set(pitch, yaw, 0, 'YXZ');
     if (playing) {
-      const closest = stations.findIndex(({aimX, aimZ}) => Math.hypot(camera.position.x - aimX, camera.position.z - aimZ) < 6.0);
-      if (hoveredRoom !== closest) hoveredRoom = closest;
-      onFrame(camera.position.x, camera.position.z, hoveredRoom, guided);
+      const {x, z} = camera.position;
+      hoveredRoom = stations.findIndex(({aimX, aimZ}) => z >= aimZ + .8 && Math.hypot(x - aimX, z - aimZ) < 5.7);
+      onFrame(x, z, hoveredRoom, yaw);
     }
 
     const t = reducedMotion ? 11 : time;
@@ -496,24 +544,58 @@ export function createWorld(canvas, onFrame, onPick, reducedMotion) {
     }
     dust.rotation.y = .012 * Math.sin(t * .08);
     dust.position.y = .09 * Math.sin(t / 4);
-    light.intensity = 70 + power * 48;
+    centerLight.intensity = 70 + power * 48;
+    const ringAge = time - hitAt;
+    if (ringAge < .85) {
+      belltower.rotation.z = Math.sin(ringAge * 28) * Math.exp(-ringAge * 5) * .24;
+      bellGlow.material.opacity = .15 + Math.exp(-ringAge * 8) * .52;
+    }
+    if (waypoint) beacon.material.opacity = .64 + .22 * Math.sin(t * 3.1);
     art.update(t, power);
-    exhibits.forEach((exhibit, i) => exhibit.update(t, states[i] ?? {}));
+    exhibits.forEach((exhibit, i) => {
+      const {aimX, aimZ} = stations[i];
+      exhibit.root.visible = webgl || Math.hypot(camera.position.x - aimX, camera.position.z - aimZ) < 28;
+      if (exhibit.root.visible) exhibit.update(t, states[i] ?? {});
+    });
     renderer.render(scene, camera);
   }
   renderer.setAnimationLoop(draw);
   return {
     keys,
     start() { if (!playing) { playing = true; place(hall); } },
-    goTo(room) {
-      guided = true;
-      if (room === null) {
-        place(hall);
-        return;
+    focus(room) {
+      returnView ??= [targetYaw, targetPitch];
+      const station = room === null ? hall : stations[room];
+      focusTarget.set(station.aimX, room === null ? 2.55 : camera.aspect < 1 ? 2 : 2.52, station.aimZ);
+      camera.lookAt(focusTarget);
+      targetYaw = camera.rotation.y;
+      targetPitch = camera.rotation.x;
+    },
+    releaseFocus() {
+      if (!returnView) return;
+      [targetYaw, targetPitch] = returnView;
+      returnView = null;
+    },
+    waypoint(target) {
+      waypoint = target;
+      beacon.visible = !!target;
+      if (target) { beacon.position.x = target.x; beacon.position.z = target.z; }
+    },
+    jump() {
+      if (!playing || suspended || jumpHeight || jumpVelocity) return false;
+      jumpVelocity = 6.1;
+      return true;
+    },
+    punch() {
+      if (!playing || suspended) return false;
+      const dx = bellPosition[0] - camera.position.x;
+      const dz = bellPosition[1] - camera.position.z;
+      const distance = Math.hypot(dx, dz);
+      if (distance < 2 && (-Math.sin(yaw) * dx - Math.cos(yaw) * dz) / distance > .56) {
+        hitAt = clock();
+        return true;
       }
-      const station = stations[room];
-      const portrait = camera.aspect < 1;
-      place({...station, aimX: station.aimX + (portrait ? 0 : .47), lookY: portrait ? 1.44 : 2.6});
+      return false;
     },
     handlePositions(room) {
       camera.updateMatrixWorld();
@@ -537,7 +619,7 @@ export function createWorld(canvas, onFrame, onPick, reducedMotion) {
       const angle = Math.atan2(hit.y - 2.51, x) + .45;
       return (Math.round(angle / (Math.PI / 6)) + 12) % 12;
     },
-    suspend(paused) { suspended = paused; if (paused) { keys.clear(); dragging = null; travel = null; } },
+    suspend(paused) { suspended = paused; if (paused) { keys.clear(); dragging = null; travel = null; jumpHeight = jumpVelocity = 0; camera.position.y = 2.03; } },
     setStates(next) { states = next; },
     finale(active) { finalAt = active ? clock() : null; },
   };

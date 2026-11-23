@@ -1,0 +1,20 @@
+html.guide-document { height: auto; min-height: 100%; overflow: auto; }
+body.guide-page { height: auto; min-height: 100dvh; overflow: auto; background: radial-gradient(ellipse at 12% 1%,#433044 0,transparent 30rem),#1a171c; }
+.guide-top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; max-width: 76rem; padding: 1.4rem clamp(1rem,5vw,4rem); margin: auto; border-bottom: 1px solid #d8b48246; }
+.guide-top a, .guide-links a { color: #f0ce96; text-underline-offset: .25em; }
+.guide-wrap { max-width: 68rem; margin: auto; padding: 0 clamp(1rem,4vw,3rem) 4rem; }
+.guide-hero { max-width: 48rem; padding: clamp(3rem,9vw,7rem) 0 2.75rem; }
+.guide-hero h1 { font: 400 clamp(3rem,8vw,6.3rem)/.94 var(--serif); letter-spacing: -.035em; margin: .6rem 0 1rem; color: #f2e2ca; }
+.guide-hero > p:not(.overline), .proof-chapter > p { color: #e7d8c5; line-height: 1.72; font-size: 1.04rem; text-wrap: pretty; }
+.guide-links { display: flex; flex-wrap: wrap; gap: .45rem 1.15rem; margin-top: .95rem; }
+#chapters { display: flex; flex-wrap: wrap; gap: .45rem .85rem; padding: .9rem 0; border-block: 1px solid #d8b48246; }
+#chapters a { color: #e6d3b2; font-size: .88rem; padding: .28rem 0; text-underline-offset: .26em; }
+.proof-chapter { --ink: #eac08d; max-width: 51rem; padding: 2.8rem 0 1.8rem; scroll-margin-top: 1rem; border-bottom: 1px solid #d8b48246; }
+.proof-chapter .overline { color: var(--ink); }
+.proof-chapter h2 { margin: .4rem 0 1rem; color: #f5e7ce; font: 400 clamp(2.2rem,5vw,3.5rem)/.98 var(--serif); }
+.proof-chapter math { font-size: 1.25rem; }
+.math-plate { display: block; padding: .8rem clamp(.58rem,4vw,1.5rem); margin: 1rem 0; overflow: auto; color: var(--ink); text-align: left; background: #19161f; border: 1px solid #d8b48235; border-left: 2px solid var(--ink); white-space: nowrap; }
+.math-plate math + math { display: block; width: max-content; margin-top: .52rem; }
+.proof-chapter .guide-links a { color: var(--ink); font: .85rem/1.6 var(--mono); overflow-wrap: anywhere; }
+html[lang="ko"] .guide-hero h1 { font: 650 clamp(2.72rem,7vw,5.25rem)/1.1 var(--sans); }
+html[lang="ko"] .proof-chapter h2 { font: 650 clamp(1.8rem,4.3vw,2.9rem)/1.15 var(--sans); letter-spacing: -.04em; }

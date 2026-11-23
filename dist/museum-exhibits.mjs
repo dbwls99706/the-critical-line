@@ -1,4 +1,6 @@
-// Three kinetic sculptures. The gallery supplies their positions and the puzzle state.
+import {liftCosts, poleLogRatio, primeSignal, splitSign} from './proof-math.mjs';
+
+// The gallery supplies the positions and puzzle state for the kinetic sculptures.
 export function createExhibits(THREE) {
   const tau = Math.PI * 2;
   const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
@@ -290,5 +292,133 @@ export function createExhibits(THREE) {
     };
   }
 
-  return [criticalLine(), reflection(), kernel()];
+  function primeBars() {
+    const root = new THREE.Group();
+    const bars = [];
+    linework(root, [-1.15, -.59, 0, .59, 1.15].map((y) => [[-1.83,y,0],[1.83,y,0]]), 0xe8ba76, .27);
+    for (const layer of [0, 1, 2]) {
+      linework(root, [ellipse(1.92, 1.49, -.34 - layer * .14)], 0xe8ba76, .32 - .06 * layer);
+    }
+    const bar = new THREE.BoxGeometry(.034, 1, .068);
+    for (let n = 2; n <= 64; n++) {
+      const body = mesh(root, bar, lightMaterial(n === 27 ? 0xf9c3ff : 0xe7b06b), -1.78 + (n - 2) * .057);
+      const cap = mesh(root, cutGem, body.material);
+      cap.scale.setScalar(n === 27 ? .08 : .021);
+      bars.push({body, cap});
+    }
+    const cursor = mesh(root, new THREE.BoxGeometry(.013, 2.42, .02), goldLight);
+    let latest = null;
+    return {root, update(t, state) {
+      const x = state.values?.[0] ?? 12;
+      if (x === latest) return;
+      latest = x;
+      const {terms} = primeSignal(x);
+      const max = Math.max(...terms.map(({weight}) => weight));
+      bars.forEach(({body, cap}, i) => {
+        const term = terms[i];
+        body.visible = cap.visible = !!term?.base;
+        if (!body.visible) return;
+        const height = .04 + term.weight / max * 2.15;
+        body.scale.y = height;
+        body.position.y = -.99 + height / 2;
+        cap.position.set(body.position.x, -.99 + height, 0);
+      });
+      cursor.position.x = -1.78 + (x - 2) * .057;
+    }};
+  }
+
+  function primeLattice() {
+    const root = new THREE.Group();
+    const lattice = new THREE.Group();
+    root.add(lattice);
+    const fragments = [];
+    for (let x = -3; x <= 3; x++) for (let y = -3; y <= 3; y++) {
+      mesh(lattice, cutGem, lightMaterial(0xb39ddf), x * .4, y * .4, -.16).scale.setScalar(.038);
+    }
+    linework(lattice, Array.from({length:7}, (_, i) => {
+      const x = (i-3)*.4;
+      return [[x,-1.2,-.16],[x,1.2,-.16]];
+    }), 0xb39ddf, .4);
+    linework(lattice, Array.from({length:7}, (_, i) => {
+      const y = (i-3)*.4;
+      return [[-1.2,y,-.16],[1.2,y,-.16]];
+    }), 0xb39ddf, .4);
+    for (const sign of [-1, 1]) {
+      const fragment = new THREE.Group();
+      root.add(fragment);
+      linework(fragment, [ellipse(.67,.67)], 0xe4c6ff,.8);
+      mesh(fragment, new THREE.IcosahedronGeometry(.28, 1), lightMaterial(0x9274d3));
+      glow(fragment, 0xb691fb, 2.03, .35);
+      fragments.push({fragment, sign});
+    }
+    return {root, update(t, state) {
+      const prime = state.values?.[0] || 11;
+      const split = splitSign(prime) === 1;
+      lattice.rotation.z = t * .08;
+      lattice.rotation.y = Math.sin(t * .38) * .35;
+      fragments.forEach(({fragment, sign}, i) => {
+        fragment.visible = split || i === 0;
+        fragment.position.x += ((split ? sign * 1.02 : 0) - fragment.position.x) * .14;
+        fragment.position.y = sign * .29 * Number(split);
+        fragment.rotation.set(t * .41, sign * t * .6, t * .08);
+      });
+    }};
+  }
+
+  function thetaBridge() {
+    const root = new THREE.Group();
+    const rings = [];
+    for (let i = 0; i < 11; i++) {
+      const ring = new THREE.Group();
+      ring.position.set((i - 5) * .34, (i - 5) * .075, Math.sin(i * .41) * .48);
+      root.add(ring);
+      linework(ring, [ellipse(.52,.82), ellipse(.48,.76,.06)], 0xa8f0d0,.55);
+      const gem = mesh(ring, cutGem, lightMaterial(0xa8f0d0));
+      gem.scale.setScalar(.09);
+      const aura = glow(ring, 0x95ffd0, 1.35, .45);
+      rings.push({ring, aura, gem});
+    }
+    linework(root, [rings.map(({ring}) => ring.position.toArray())], 0xf5c585, .64);
+    return {root, update(t, state) {
+      const [exp, power, degree] = state.values ?? [4, .7, 2];
+      const {shared, local} = liftCosts(10 ** exp, power, degree);
+      const count = Math.min(11, 2 + Math.round(power * 3));
+      rings.forEach(({ring, aura, gem}, i) => {
+        ring.visible = i < count;
+        ring.rotation.y = .52 + .34 * Math.sin(i * .7 + t * .85);
+        ring.rotation.z = .13 * Math.cos(i + t * .48);
+        ring.scale.y = .73 + Math.min(1, Math.log10(local + 1) / 6) * .65;
+        gem.position.y = Math.sin(t * 2 - i * .55) * .68;
+        aura.material.opacity = .25 + .25 / (1 + Math.abs(Math.log10(shared / local)));
+      });
+    }};
+  }
+
+  function emptyHalf() {
+    const root = new THREE.Group();
+    const field = new THREE.Group();
+    root.add(field);
+    for (let layer = 0; layer < 4; layer++) {
+      linework(field, Array.from({length:9}, (_, i) => {
+        const y = (i-4)*.32;
+        return [[0,y,-layer*.21],[1.75,y,-layer*.21]];
+      }), 0x9ab6ff,.5 - layer*.07);
+    }
+    linework(root, [[[0,-1.45,.14],[0,1.45,.14]],[[-1.75,0,0],[1.75,0,0]]], 0xc0d0ff,.9);
+    const marker = new THREE.Group();
+    root.add(marker);
+    mesh(marker, new THREE.IcosahedronGeometry(.13, 1), lightMaterial(0xffbd80));
+    const aura = glow(marker, 0xffb780, 2.3, .6);
+    return {root, update(t, state) {
+      const [beta, k, accepted] = state.values ?? [.47, 0, 0];
+      marker.position.x += ((beta - .5) * 3.75 - marker.position.x) * .16;
+      marker.position.y = .41 + .045 * Math.sin(t * 2);
+      marker.visible = !accepted;
+      aura.scale.setScalar(1 + Math.max(0, poleLogRatio(beta, k)) * .44);
+      field.rotation.y = accepted ? .13 * Math.sin(t * .76) : 0;
+      field.scale.y = accepted ? 1.12 : 1;
+    }};
+  }
+
+  return [criticalLine(), reflection(), kernel(), primeBars(), primeLattice(), thetaBridge(), emptyHalf()];
 }

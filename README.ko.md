@@ -1,41 +1,33 @@
 # The Critical Line
 
-[전시 입장](https://riemann-proof-lab.dbwls99.chatgpt.site/) · [English](README.md)
+[전시관 입장](https://the-critical-line.vercel.app/) · [증명 해설](https://the-critical-line.vercel.app/proof.html) · [English](README.md)
 
-리만가설과 공개 Lean 증명을 소재로 만든 1인칭 웹 전시입니다. 전시장을 걸어 다니며 세 빛을 임계선에 올리고, 궤도를 반 바퀴 돌리고, 공개 소스에서 독립 검사 기록까지 이어 보세요.
+리만가설을 다룬 1인칭 전시다. 영점을 임계선에 놓아 보면서 가설의 내용을 읽고, 소수 거듭제곱에 가중치를 달면서 증명을 따라간다. 왜 세타 리프트를 √x번쯤 잇는지, 소수의 가중합으로 어떻게 선 밖의 영점을 배제하는지를 각 방에서 직접 움직여 볼 수 있다.
 
-[![전시 입구와 지도, 빛을 임계선으로 옮기는 장면](docs/exhibition.gif)](https://riemann-proof-lab.dbwls99.chatgpt.site/)
+[![The Critical Line 전시관의 일곱 작품 둘러보기](docs/exhibition.gif)](https://the-critical-line.vercel.app/)
 
-## 관람 방법
+## 관람 조작
 
-- **PC** - WASD로 이동합니다. 화면을 끌어 방향을 바꾸고 작품 가까이에서 E를 누르세요. 바닥을 클릭해서 이동할 수도 있습니다.
-- **터치 화면** - 방향 버튼으로 이동하고 화면을 끌어 둘러보세요. 작품을 터치하면 열립니다.
-- **전시 지도** - 현재 위치를 확인하거나 작품으로 곧장 이동할 수 있습니다. 지도에 표시된 동선은 전시장 바닥의 안내선과 색이 같습니다.
+- **키보드** - WASD로 걷고, Shift로 달린다. Space는 점프, E는 작품 열기, F는 주먹이다. 마우스를 끌어 시점을 바꾸거나 바닥을 눌러 걸어갈 수 있다.
+- **터치** - 방향 버튼으로 걷고 화면을 끌어 둘러본다. 가까운 작품을 누르면 체험이 열린다.
+- **전시 지도** - 목적지를 정하고 바닥의 황동 표식을 따라 걷는다. 체험을 끝내면 시작했던 자리에 서 있다.
 
-입구와 왼쪽 벽의 별자리에는 [제타 함수 영점](https://www.lmfdb.org/zeros/zeta/) 가운데 허수부가 양수인 첫 24개와 그 대칭점을 담았습니다.
+입구 벽의 별 지도는 [제타 함수 영점](https://www.lmfdb.org/zeros/zeta/)에서 양의 허수부 24개와 그 켤레를 가져왔다. 기본 언어는 영어다. 상단의 KO를 누르면 한국어로 바뀐다.
 
-처음에는 영어로 열립니다. 상단의 **KO**를 누르면 한국어로 바뀝니다. 선택한 언어와 모은 빛 조각은 브라우저에 저장됩니다. 배포 사이트는 비공개입니다.
+## 증명과 원본
 
-## 로컬에서 실행하기
+레벤트 알푀게는 [발표 원문](https://alpo.ge/remark.pdf)에서 Claude와 함께 논증을 발전시키고 Lean으로 형식화했다고 밝혔다. [증명 해설](https://the-critical-line.vercel.app/proof.html)은 [Yan Ru Pei가 정리한 증명 구조](https://peabrane.github.io/files/pei-2026-claimed-lean-proof-rh-roadmap.pdf)를 따라 산술적 상한, 구간형 Landau 정리, 함수방정식을 잇고, 각 단계에서 공개 Lean 선언을 열 수 있게 했다.
 
-저장소의 루트에서 실행합니다.
+소수 거듭제곱의 가중합은 브라우저에서 직접 계산한다. 다른 모형은 증명의 한 단계씩을 다룬다. 마지막 방에서는 포함된 [Main.lean](https://github.com/Deicyde/riemann-hypothesis/blob/a172c464fd4bcfc4f53e394dcba45d742b1409a6/src/Main.lean)의 SHA-256 지문을 계산한다. 전체 증명의 검사 결과는 [Lean·Mathlib 공동 성명](https://leanprover-community.github.io/blog/posts/riemann-hypothesis/)과 [앤드루 서덜랜드의 독립 검사 기록](https://math.mit.edu/~drew/grh/)에서 볼 수 있다.
+
+## 로컬 실행
 
 ```sh
 python3 -m http.server 8000 --bind 127.0.0.1 --directory dist
 ```
 
-[localhost:8000](http://localhost:8000/)을 엽니다. 정적 파일만으로 실행됩니다. WebGL 2를 지원하면 Three.js를 쓰고, 그렇지 않으면 Canvas 2D로 같은 전시장을 그립니다.
+[localhost:8000](http://localhost:8000/)을 연다. Three.js와 WebGL 2로 전시관을 그린다. WebGL 2를 쓸 수 없으면 Canvas 2D로 같은 공간을 그린다.
 
-## 전시 속 증명
+## 크레딧
 
-**증명 릴레이**에서는 공개된 진입점 파일 `Main.lean`의 SHA-256을 브라우저에서 계산합니다. 이어서 공개된 명제 대조 결과와 독립 커널 검사 결과를 볼 수 있습니다. 퍼즐은 수학에서 아이디어를 가져왔습니다. 전체 증명과 검사 과정은 아래 기록에 있습니다.
-
-- [레벤트 알푀게의 증명 발표](https://alpo.ge/remark.pdf)
-- [Lean·Mathlib 공동 성명](https://leanprover-community.github.io/blog/posts/riemann-hypothesis/)
-- [앤드루 서덜랜드의 독립 검사 기록](https://math.mit.edu/~drew/grh/)
-
-전시 노트에는 [소수 구간 실험](dist/lab/index.html)도 있습니다. 작은 구간에서 센 소수 개수를 Schoenfeld 부등식으로 구한 범위와 대조할 수 있습니다.
-
-## 사용한 라이브러리와 서체
-
-[Three.js](https://github.com/mrdoob/three.js)는 [MIT 라이선스](dist/vendor/THREE-LICENSE.txt)로 배포됩니다. [Instrument Serif](https://fonts.google.com/specimen/Instrument+Serif)와 [Pretendard](https://github.com/orioncactus/pretendard)를 줄여 만든 Gallery Sans를 사용했습니다. [Instrument Serif](dist/fonts/instrument-serif-OFL.txt)와 [Gallery Sans](dist/fonts/gallery-sans-OFL.txt)의 글꼴 라이선스를 함께 두었습니다.
+[Three.js](https://github.com/mrdoob/three.js)는 [MIT 라이선스](dist/vendor/THREE-LICENSE.txt)를 따른다. 서체는 [Instrument Serif](https://fonts.google.com/specimen/Instrument+Serif)와 [Pretendard](https://github.com/orioncactus/pretendard)에서 필요한 글자를 모은 Gallery Sans를 썼다. [Instrument Serif](dist/fonts/instrument-serif-OFL.txt)와 [Gallery Sans](dist/fonts/gallery-sans-OFL.txt)의 라이선스를 함께 제공한다.
