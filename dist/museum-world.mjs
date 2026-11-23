@@ -1,6 +1,7 @@
 import * as THREE from './vendor/three.module.min.js';
 import { createSculpture } from './museum-sculpture.mjs';
 import { createExhibits } from './museum-exhibits.mjs';
+import { createHands, punchContact, punchLength } from './museum-hands.mjs';
 import { createCanvasRenderer } from './museum-canvas.mjs';
 
 import { drawZeroAtlas } from './zero-atlas.mjs';
@@ -245,7 +246,6 @@ function makeRoom(scene) {
   const belltower = new THREE.Group();
   const [bx, bz] = bellPosition;
   belltower.position.set(bx, 1.65, bz);
-  scene.add(belltower);
   finish(scene, new THREE.CylinderGeometry(.41, .57, .22, 24), bronze, bx, .12, bz);
   finish(scene, new THREE.CylinderGeometry(.105, .13, 2.63, 12), bronze, bx, 1.42, bz - .4);
   finish(belltower, new THREE.CylinderGeometry(.135, .32, .36, 32), bronze, 0, .04, 0);
@@ -308,7 +308,7 @@ function finaleArt(scene, texture) {
   return {group, beam, lay};
 }
 
-export function createWorld(canvas, onFrame, onPick, reducedMotion) {
+export function createWorld(canvas, viewmodel, onFrame, onPick, onBell, reducedMotion) {
   const settings = {alpha: false, antialias: true, powerPreference: 'high-performance'};
   const webgl = canvas.getContext('webgl2', settings);
   const renderer = webgl ? new THREE.WebGLRenderer({canvas, context: webgl, ...settings}) :
@@ -341,12 +341,15 @@ export function createWorld(canvas, onFrame, onPick, reducedMotion) {
   const architecture = new THREE.Group();
   const {centerLight, belltower, bellGlow} = makeRoom(architecture);
   scene.userData.architecture = architecture;
-  scene.add(architecture);
+  scene.add(architecture, belltower);
   const haze = haloTexture();
   const dust = makeDust(scene, haze, 640);
   const finale = finaleArt(scene, haze);
   const ray = new THREE.Raycaster();
   const focusTarget = new THREE.Vector3();
+  const aim = new THREE.Vector3();
+  const bellVector = new THREE.Vector3();
+  const hand = createHands(viewmodel, reducedMotion);
   const focusPoint = new THREE.Vector2();
   const lookTarget = new THREE.Vector2();
   const desired = new THREE.Vector3();
@@ -376,7 +379,13 @@ export function createWorld(canvas, onFrame, onPick, reducedMotion) {
   let jumpHeight = 0;
   let jumpVelocity = 0;
   let hitAt = -Infinity;
+  let swing = null;
+  let swingSide = -1;
   let returnView = null;
+  let inspection = null;
+  let transition = null;
+  let offsetX = 0;
+  let offsetY = 0;
   let waypoint = null;
   const beaconGeometry = new THREE.RingGeometry(.58, .62, 44);
   const beacon = finish(scene, beaconGeometry, new THREE.MeshBasicMaterial({
@@ -407,13 +416,75 @@ export function createWorld(canvas, onFrame, onPick, reducedMotion) {
     renderer.setSize(width, height, false);
     camera.aspect = width / height;
     camera.fov = width < height ? 68 : 57;
-    camera.updateProjectionMatrix();
+    projectInspection(offsetX, offsetY);
     if (!playing && initialAspect !== camera.aspect) stageIntro(camera.aspect);
     initialAspect = camera.aspect;
   };
   const observer = new ResizeObserver(resize);
   observer.observe(canvas);
   resize();
+
+  function projectInspection(x, y) {
+    offsetX = x;
+    offsetY = y;
+    const width = canvas.clientWidth;
+    const height = canvas.clientHeight;
+    if (!width || !height) return;
+    if (x || y) camera.setViewOffset(width, height, width * x, height * y, width, height);
+    else camera.clearViewOffset();
+  }
+
+  function pose() {
+    const {x, y, z} = camera.position;
+    return {x, y, z, yaw, pitch, offsetX, offsetY};
+  }
+
+  function easeTo(end, seconds = .47) {
+    const from = pose();
+    transition = {from, end, time: clock(), seconds: reducedMotion ? 0 : seconds};
+  }
+
+  function inspectionPose(view) {
+    const narrow = canvas.clientWidth <= 700;
+    const distance = (narrow ? 6.8 : 5.45) - Math.abs(view.angle) * .95;
+    const {aimX: x, aimZ: z} = view.station;
+    return {x: x + Math.sin(view.angle) * distance, y: 2.51 + Math.sin(view.elevation) * distance,
+      z: z + Math.cos(view.angle) * distance, yaw: view.angle, pitch: -view.elevation,
+      offsetX: narrow ? 0 : Math.min(.255, 254 / Math.max(1, canvas.clientWidth)), offsetY: narrow ? .188 : .015};
+  }
+
+  function steerInspection(delta, elevation = 0) {
+    if (!inspection) return;
+    inspection.angle = clamp(inspection.angle + delta, -.70, .70);
+    inspection.elevation = clamp(inspection.elevation + elevation, -.17, .26);
+  }
+
+  function updateView(time) {
+    if (transition) {
+      const {from, end, seconds} = transition;
+      const progress = seconds ? clamp((time - transition.time) / seconds, 0, 1) : 1;
+      const t = progress * progress * (3 - 2 * progress);
+      const destination = inspection ? inspectionPose(inspection) : end;
+      camera.position.set(THREE.MathUtils.lerp(from.x,destination.x,t), THREE.MathUtils.lerp(from.y,destination.y,t),
+        THREE.MathUtils.lerp(from.z,destination.z,t));
+      yaw = from.yaw + Math.atan2(Math.sin(destination.yaw - from.yaw), Math.cos(destination.yaw - from.yaw)) * t;
+      pitch = THREE.MathUtils.lerp(from.pitch,destination.pitch,t);
+      projectInspection(THREE.MathUtils.lerp(from.offsetX,destination.offsetX,t), THREE.MathUtils.lerp(from.offsetY,destination.offsetY,t));
+      if (progress === 1) {
+        targetYaw = yaw = destination.yaw;
+        targetPitch = pitch = destination.pitch;
+        transition = null;
+      }
+      return;
+    }
+    if (inspection) {
+      const next = inspectionPose(inspection);
+      camera.position.set(next.x, next.y, next.z);
+      yaw = next.yaw;
+      pitch = next.pitch;
+      if (offsetX !== next.offsetX || offsetY !== next.offsetY) projectInspection(next.offsetX, next.offsetY);
+    }
+  }
 
   function allowed(x, z) {
     if (x < borders.left || x > borders.right || z < borders.back || z > borders.front) return false;
@@ -434,20 +505,23 @@ export function createWorld(canvas, onFrame, onPick, reducedMotion) {
   }
 
   canvas.addEventListener('pointerdown', (event) => {
-    if (!playing || suspended || event.button > 0) return;
+    if (!playing || (suspended && !inspection) || event.button > 0) return;
     canvas.setPointerCapture(event.pointerId);
     dragging = {x: event.clientX, y: event.clientY, originX: event.clientX, originY: event.clientY};
     suppressClick = false;
   });
   canvas.addEventListener('pointermove', (event) => {
-    if (!dragging || !playing || suspended) return;
+    if (!dragging || !playing || (suspended && !inspection)) return;
     const dx = event.clientX - dragging.x;
     const dy = event.clientY - dragging.y;
     if (Math.hypot(event.clientX - dragging.originX, event.clientY - dragging.originY) > 5) suppressClick = true;
     if (suppressClick) {
-      targetYaw -= dx * .0034;
-      targetPitch = clamp(targetPitch - dy * .0034, -1.05, 1.03);
-      travel = null;
+      if (inspection) steerInspection(-dx * .004, dy * .0028);
+      else {
+        targetYaw -= dx * .0034;
+        targetPitch = clamp(targetPitch - dy * .0034, -1.05, 1.03);
+        travel = null;
+      }
     }
     dragging.x = event.clientX;
     dragging.y = event.clientY;
@@ -473,7 +547,7 @@ export function createWorld(canvas, onFrame, onPick, reducedMotion) {
   canvas.addEventListener('pointercancel', () => { dragging = null; });
 
   function step(dt) {
-    if (!playing || suspended) return;
+    if (!playing || suspended || transition) return;
     const steer = Number(keys.has('ArrowLeft')) - Number(keys.has('ArrowRight'));
     if (steer) {
       targetYaw += steer * dt * 1.5;
@@ -515,14 +589,17 @@ export function createWorld(canvas, onFrame, onPick, reducedMotion) {
     const dt = Math.min(.13, Math.max(0, time - last));
     last = time;
     step(dt);
-    const rotationSpeed = reducedMotion ? 1 : Math.min(1, dt * 12);
-    yaw = THREE.MathUtils.lerp(yaw, targetYaw, rotationSpeed);
-    pitch = THREE.MathUtils.lerp(pitch, targetPitch, rotationSpeed);
+    if (transition || inspection) updateView(time);
+    else {
+      const rotationSpeed = reducedMotion ? 1 : Math.min(1, dt * 12);
+      yaw = THREE.MathUtils.lerp(yaw, targetYaw, rotationSpeed);
+      pitch = THREE.MathUtils.lerp(pitch, targetPitch, rotationSpeed);
+    }
     camera.rotation.set(pitch, yaw, 0, 'YXZ');
     if (playing) {
-      const {x, z} = camera.position;
+      const {x, z} = returnView ?? transition?.end ?? camera.position;
       hoveredRoom = stations.findIndex(({aimX, aimZ}) => z >= aimZ + .8 && Math.hypot(x - aimX, z - aimZ) < 5.7);
-      onFrame(x, z, hoveredRoom, yaw);
+      onFrame(x, z, hoveredRoom, returnView?.yaw ?? yaw);
     }
 
     const t = reducedMotion ? 11 : time;
@@ -545,11 +622,22 @@ export function createWorld(canvas, onFrame, onPick, reducedMotion) {
     dust.rotation.y = .012 * Math.sin(t * .08);
     dust.position.y = .09 * Math.sin(t / 4);
     centerLight.intensity = 70 + power * 48;
-    const ringAge = time - hitAt;
-    if (ringAge < .85) {
-      belltower.rotation.z = Math.sin(ringAge * 28) * Math.exp(-ringAge * 5) * .24;
-      bellGlow.material.opacity = .15 + Math.exp(-ringAge * 8) * .52;
+    const age = swing ? time - swing.time : -1;
+    if (swing && age >= punchContact && !swing.contact) {
+      swing.contact = true;
+      bellVector.set(bellPosition[0], 1.70, bellPosition[1]).sub(camera.position);
+      camera.getWorldDirection(aim);
+      const reach = bellVector.dot(aim);
+      if (reach > 0 && reach < 1.95 && bellVector.addScaledVector(aim, -reach).lengthSq() < .41 ** 2) {
+        hitAt = time;
+        onBell();
+      }
     }
+    if (swing && age >= punchLength) swing = null;
+    const ringAge = time - hitAt;
+    belltower.rotation.z = ringAge < .85 ? Math.sin(ringAge * 29) * Math.exp(-ringAge * 5.1) * .24 : 0;
+    bellGlow.material.opacity = ringAge < .85 ? .15 + Math.exp(-ringAge * 8) * .50 : .15;
+    hand(swing ? age : -1, swingSide, ringAge);
     if (waypoint) beacon.material.opacity = .64 + .22 * Math.sin(t * 3.1);
     art.update(t, power);
     exhibits.forEach((exhibit, i) => {
@@ -564,17 +652,29 @@ export function createWorld(canvas, onFrame, onPick, reducedMotion) {
     keys,
     start() { if (!playing) { playing = true; place(hall); } },
     focus(room) {
-      returnView ??= [targetYaw, targetPitch];
-      const station = room === null ? hall : stations[room];
-      focusTarget.set(station.aimX, room === null ? 2.55 : camera.aspect < 1 ? 2 : 2.52, station.aimZ);
-      camera.lookAt(focusTarget);
-      targetYaw = camera.rotation.y;
-      targetPitch = camera.rotation.x;
+      returnView ??= transition?.end ?? {...pose(), y: 2.03, yaw: targetYaw, pitch: targetPitch};
+      if (room === null) {
+        const {x, y, z} = camera.position;
+        focusTarget.set(hall.aimX, 2.55, hall.aimZ);
+        focusTarget.sub(camera.position);
+        easeTo({x, y, z, yaw: Math.atan2(-focusTarget.x,-focusTarget.z),
+          pitch: Math.atan2(focusTarget.y, Math.hypot(focusTarget.x,focusTarget.z)), offsetX: 0, offsetY: 0});
+      } else {
+        inspection = {station: stations[room], angle: 0, elevation: 0};
+        easeTo(inspectionPose(inspection));
+      }
+    },
+    rotateExhibit(angle) { steerInspection(angle); },
+    frontView() {
+      if (!inspection) return;
+      inspection.angle = inspection.elevation = 0;
+      easeTo(inspectionPose(inspection), .23);
     },
     releaseFocus() {
       if (!returnView) return;
-      [targetYaw, targetPitch] = returnView;
-      returnView = null;
+      const view = returnView;
+      returnView = inspection = null;
+      easeTo(view, .31);
     },
     waypoint(target) {
       waypoint = target;
@@ -587,18 +687,13 @@ export function createWorld(canvas, onFrame, onPick, reducedMotion) {
       return true;
     },
     punch() {
-      if (!playing || suspended) return false;
-      const dx = bellPosition[0] - camera.position.x;
-      const dz = bellPosition[1] - camera.position.z;
-      const distance = Math.hypot(dx, dz);
-      if (distance < 2 && (-Math.sin(yaw) * dx - Math.cos(yaw) * dz) / distance > .56) {
-        hitAt = clock();
-        return true;
-      }
-      return false;
+      if (!playing || suspended || transition || swing) return;
+      swingSide = -swingSide;
+      swing = {time: clock(), contact: false};
     },
     handlePositions(room) {
       camera.updateMatrixWorld();
+      if (transition) return [];
       return (exhibits[room]?.handles ?? []).map((handle) => {
         handle.getWorldPosition(projected).project(camera);
         return [(projected.x + 1) * 50, (1 - projected.y) * 50, projected.z < 1];
@@ -619,7 +714,13 @@ export function createWorld(canvas, onFrame, onPick, reducedMotion) {
       const angle = Math.atan2(hit.y - 2.51, x) + .45;
       return (Math.round(angle / (Math.PI / 6)) + 12) % 12;
     },
-    suspend(paused) { suspended = paused; if (paused) { keys.clear(); dragging = null; travel = null; jumpHeight = jumpVelocity = 0; camera.position.y = 2.03; } },
+    suspend(paused) {
+      suspended = paused;
+      if (!paused) return;
+      keys.clear();
+      dragging = travel = swing = null;
+      jumpHeight = jumpVelocity = 0;
+    },
     setStates(next) { states = next; },
     finale(active) { finalAt = active ? clock() : null; },
   };

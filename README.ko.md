@@ -10,7 +10,7 @@
 
 - **키보드** - WASD로 걷고, Shift로 달린다. Space는 점프, E는 작품 열기, F는 주먹이다. 마우스를 끌어 시점을 바꾸거나 바닥을 눌러 걸어갈 수 있다.
 - **터치** - 방향 버튼으로 걷고 화면을 끌어 둘러본다. 가까운 작품을 누르면 체험이 열린다.
-- **전시 지도** - 목적지를 정하고 바닥의 황동 표식을 따라 걷는다. 체험을 끝내면 시작했던 자리에 서 있다.
+- **전시 지도** - 목적지를 정하고 바닥의 황동 표식을 따라 걷는다. 작품을 열면 정면에서 볼 수 있다. 화면을 끌거나 버튼을 눌러 각도를 돌리고, 작품을 닫으면 열기 전 자리에 돌아온다.
 
 입구 벽의 별 지도는 [제타 함수 영점](https://www.lmfdb.org/zeros/zeta/)에서 양의 허수부 24개와 그 켤레를 가져왔다. 기본 언어는 영어다. 상단의 KO를 누르면 한국어로 바뀐다.
 
@@ -19,6 +19,8 @@
 레벤트 알푀게는 [발표 원문](https://alpo.ge/remark.pdf)에서 Claude와 함께 논증을 발전시키고 Lean으로 형식화했다고 밝혔다. [증명 해설](https://the-critical-line.vercel.app/proof.html)은 [Yan Ru Pei가 정리한 증명 구조](https://peabrane.github.io/files/pei-2026-claimed-lean-proof-rh-roadmap.pdf)를 따라 산술적 상한, 구간형 Landau 정리, 함수방정식을 잇고, 각 단계에서 공개 Lean 선언을 열 수 있게 했다.
 
 소수 거듭제곱의 가중합은 브라우저에서 직접 계산한다. 다른 모형은 증명의 한 단계씩을 다룬다. 마지막 방에서는 포함된 [Main.lean](https://github.com/Deicyde/riemann-hypothesis/blob/a172c464fd4bcfc4f53e394dcba45d742b1409a6/src/Main.lean)의 SHA-256 지문을 계산한다. 전체 증명의 검사 결과는 [Lean·Mathlib 공동 성명](https://leanprover-community.github.io/blog/posts/riemann-hypothesis/)과 [앤드루 서덜랜드의 독립 검사 기록](https://math.mit.edu/~drew/grh/)에서 볼 수 있다.
+
+[이 증명이 해결한 것](https://the-critical-line.vercel.app/proof.html#results)에서 두 명제의 범위를 읽고 직접 센 소수 개수와 보장 범위를 비교할 수 있다.
 
 ## 로컬 실행
 

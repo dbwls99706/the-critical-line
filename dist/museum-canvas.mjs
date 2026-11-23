@@ -51,6 +51,8 @@ export function createCanvasRenderer(THREE, canvas) {
   let height = 1;
   let scale = 1;
   let lens = 1;
+  let centerX = 0;
+  let centerY = 0;
   let lastCamera = '';
   let lastFrame = 0;
   let previousFrame = 0;
@@ -65,7 +67,7 @@ export function createCanvasRenderer(THREE, canvas) {
   }
 
   function screen([x, y, depth]) {
-    return [width / 2 + lens * x / depth, height / 2 - lens * y / depth, depth];
+    return [centerX + lens * x / depth, centerY - lens * y / depth, depth];
   }
 
   function path(ctx, pixels) {
@@ -268,7 +270,7 @@ export function createCanvasRenderer(THREE, canvas) {
         const extent = (object.scale.x + object.scale.y + object.scale.z) * .5;
         const depth = -matrix[14];
         if (depth + extent < near || depth - extent > 40 ||
-            Math.abs(matrix[12]) - extent > (depth + extent) * width / (2 * lens)) return;
+            Math.abs(matrix[12]) - extent > (depth + extent) * Math.max(centerX, width - centerX) / lens) return;
       }
       if (object.isLine) {
         seamLines.push(object);
@@ -364,10 +366,13 @@ export function createCanvasRenderer(THREE, canvas) {
       const now = performance.now();
       if (now - lastFrame < 20) return;
       lastFrame = now;
-      lens = height * .5 / Math.tan(camera.fov * Math.PI / 360);
+      const projection = camera.projectionMatrix.elements;
+      lens = height * .5 * projection[5];
+      centerX = width * .5 * (1 - projection[8]);
+      centerY = height * .5 * (1 + projection[9]);
       scene.updateMatrixWorld();
       camera.updateMatrixWorld();
-      const key = camera.matrixWorldInverse.elements.map((value) => value.toFixed(4)).join(',');
+      const key = camera.matrixWorldInverse.elements.map((value) => value.toFixed(4)).join(',') + ':' + centerX + ':' + centerY;
       if (key !== lastCamera) {
         architecture(scene.userData.architecture, camera);
         lastCamera = key;

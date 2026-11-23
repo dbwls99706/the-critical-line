@@ -10,7 +10,7 @@ The Critical Line is a first-person exhibition about the Riemann hypothesis. The
 
 - **Keyboard** - WASD to walk, Shift to run, Space to jump, E to open an installation, and F to punch. Drag to look around or click the floor to walk there.
 - **Touch** - Use the movement pad and drag to look around. Tap a nearby installation to open it.
-- **Floor plan** - Pick a waypoint and follow the brass trail on foot. Finishing an installation leaves you where you started it.
+- **Floor plan** - Pick a waypoint and follow the brass trail on foot. Each installation opens head-on. Drag the scene to look around the sculpture or use the view buttons. Closing it returns you to your original position.
 
 The atlas on the entrance wall uses the first 24 positive [zeta zero heights](https://www.lmfdb.org/zeros/zeta/) and their reflections. EN is the default. Switch to KO from the top bar.
 
@@ -19,6 +19,8 @@ The atlas on the entrance wall uses the first 24 positive [zeta zero heights](ht
 Levent Alpöge’s [announcement](https://alpo.ge/remark.pdf) credits Claude for work on the argument and its Lean formalization. The [proof guide](https://the-critical-line.vercel.app/proof.html) links each step to its declarations in the published code. It follows [Yan Ru Pei’s roadmap](https://peabrane.github.io/files/pei-2026-claimed-lean-proof-rh-roadmap.pdf) to connect the arithmetic estimate, the windowed Landau theorem, and the functional equation.
 
 The prime-power sum is computed in the browser. The other interactive models isolate specific steps. In Proof Relay the browser hashes the bundled [Main.lean](https://github.com/Deicyde/riemann-hypothesis/blob/a172c464fd4bcfc4f53e394dcba45d742b1409a6/src/Main.lean). The [Lean and Mathlib statement](https://leanprover-community.github.io/blog/posts/riemann-hypothesis/) and [Andrew Sutherland’s records](https://math.mit.edu/~drew/grh/) cover the full proof and its independent checks.
+
+See [what the proof settles](https://the-critical-line.vercel.app/proof.html#results) for the precise scope of RH and Dirichlet GRH, and compare an exact count with the guaranteed range.
 
 ## Run locally
 

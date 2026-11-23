@@ -4,6 +4,7 @@ import { attachPlans, placeOnPlan, showPlanTarget } from './museum-plan.mjs';
 import { mountZeroAtlas } from './zero-atlas.mjs';
 import { copy, getLanguage, saveLanguage } from './museum-i18n.mjs';
 import { proofCopy, proofLinks } from './proof-copy.mjs';
+import { resultCopy } from './proof-results.mjs';
 import { workshops } from './proof-workbench.mjs';
 
 const get = (id) => document.getElementById(id);
@@ -36,7 +37,8 @@ let language = getLanguage();
 function localizedCopy() {
   const {rooms, ...writing} = proofCopy[language];
   const base = copy[language];
-  return {...base, ...writing, rooms: [...base.rooms, ...Object.values(rooms)]};
+  const results = resultCopy(language);
+  return {...base, ...writing, resultsLink: results.summary, endingText: results.short, rooms: [...base.rooms, ...Object.values(rooms)]};
 }
 
 let words = localizedCopy();
@@ -52,8 +54,7 @@ let audio;
 let preservedFocus;
 let lastLocation = -2;
 let targetRoom = 0;
-let lastPunch = -Infinity;
-let punchLeft = false;
+let finalePlaying = false;
 let visitorX = hall.x;
 let visitorZ = hall.z;
 
@@ -162,7 +163,7 @@ function renderLanguage() {
 
 function syncWorld() {
   world?.setStates(states);
-  world?.suspend(!started || activeRoom !== null || map.open || notes.open || !get('final-card').hidden);
+  world?.suspend(!started || activeRoom !== null || finalePlaying || map.open || notes.open || !get('final-card').hidden);
 }
 
 function updateProgress() {
@@ -223,6 +224,7 @@ function closePanel(returnFocus = true) {
   handlesLayer.replaceChildren();
   sceneHandles = [];
   panel.hidden = true;
+  get('inspection-controls').hidden = true;
   document.body.classList.remove('puzzle-open');
   world?.releaseFocus();
   lastLocation = -2;
@@ -433,11 +435,13 @@ function openPanel(room, focus = true) {
   panel.dataset.room = room;
   panel.style.setProperty('--exhibit', stationColor(room));
   panel.hidden = false;
+  get('inspection-controls').hidden = !world;
+  if (focus) panel.scrollTop = 0;
   document.body.classList.add('puzzle-open');
   get('engage').hidden = true;
   get('panel-kicker').textContent = galleryLabel(room);
   get('panel-title').textContent = exhibit.task;
-  get('instruction').textContent = exhibit.instruction;
+  get('instruction').textContent = words.tasks[room];
   get('context').open = contextWasOpen;
   get('context-body').textContent = exhibit.context;
   const [url, declaration] = proofLinks[room];
@@ -480,13 +484,16 @@ for (const dialog of [map, notes]) {
 }
 
 function showFinale() {
-  if (get('finale').hidden) return;
+  if (get('finale').hidden || finalePlaying || !get('final-card').hidden) return;
+  finalePlaying = true;
   world?.focus(null);
+  syncWorld();
   clearTimeout(finaleTimer);
   finaleTimer = setTimeout(() => {
     world?.finale(true);
     chime([261.63, 392, 523.25, 659.25, 783.99], .25);
     finaleTimer = setTimeout(() => {
+      finalePlaying = false;
       get('final-card').hidden = false;
       get('close-final').focus({preventScroll: true});
       syncWorld();
@@ -511,6 +518,7 @@ get('finale').addEventListener('click', showFinale);
 get('close-final').addEventListener('click', () => {
   get('final-card').hidden = true;
   world?.releaseFocus();
+  world?.finale(false);
   get('finale').focus({preventScroll: true});
   syncWorld();
 });
@@ -522,7 +530,9 @@ get('reset-game').addEventListener('click', () => {
   closePanel(false);
   get('final-card').hidden = true;
   clearTimeout(finaleTimer);
+  finalePlaying = false;
   world?.finale(false);
+  world?.releaseFocus();
   updateProgress();
   pickWaypoint(0, false);
   notes.close();
@@ -538,7 +548,7 @@ window.addEventListener('keydown', (event) => {
     closePanel();
     return;
   }
-  if (activeRoom !== null || !get('final-card').hidden) return;
+  if (activeRoom !== null || finalePlaying || !get('final-card').hidden) return;
   if (event.code === 'Space' && event.target.closest?.('button') &&
       !['minimap-button', 'engage'].includes(event.target.id)) return;
   if (event.code === 'Space' || event.code === 'KeyF') {
@@ -573,23 +583,15 @@ function performAction(action) {
     if (world.jump()) chime([147], .04);
     return;
   }
-  const now = performance.now();
-  if (now - lastPunch < 270) return;
-  lastPunch = now;
-  punchLeft = !punchLeft;
-  const glove = get('player-hands').children[punchLeft ? 0 : 1];
-  glove.classList.remove('striking');
-  void glove.offsetWidth;
-  glove.classList.add('striking');
-  if (world.punch()) chime([352, 528, 711], .045);
+  world.punch();
 }
 
 for (const button of document.querySelectorAll('[data-action]')) {
   button.addEventListener('click', () => performAction(button.dataset.action));
 }
-for (const glove of get('player-hands').children) {
-  glove.addEventListener('animationend', () => glove.classList.remove('striking'));
-}
+get('orbit-left').addEventListener('click', () => world?.rotateExhibit(-.19));
+get('orbit-right').addEventListener('click', () => world?.rotateExhibit(.19));
+get('orbit-reset').addEventListener('click', () => world?.frontView());
 
 function soundSetup() {
   const Context = window.AudioContext || window.webkitAudioContext;
@@ -645,9 +647,9 @@ get('sound').addEventListener('click', async (event) => {
 });
 
 try {
-  world = createWorld(get('world'), updateFrame, (room) => {
+  world = createWorld(get('world'), get('player-hands'), updateFrame, (room) => {
     if (room === nearby) openPanel(room);
-  }, reducedMotion);
+  }, () => chime([352, 528, 711], .045), reducedMotion);
   world.setStates(states);
 } catch (error) {
   document.body.classList.add('fallback');

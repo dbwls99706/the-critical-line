@@ -37,7 +37,8 @@
         <button class="enter" id="enter" type="button"><span data-text="enter">Enter exhibition</span><span class="button-glyph" aria-hidden="true"></span></button>
       </div>
       <div class="intro-caption"><span class="caption-rule"></span><div><strong data-text="caption">The central installation</strong><small>Re(s) = ½</small></div></div>
-      <div class="intro-foot"><nav class="intro-links"><a id="open-notes" href="#notes" data-text="notes">Exhibition notes</a><a href="./proof.html" data-text="ledger">Proof and Lean source</a></nav><span data-text="controls">Keyboard, mouse or touch</span></div>
+      <div class="intro-foot"><nav class="intro-links"><a id="open-notes" href="#notes" data-text="notes">Exhibition notes</a><a href="./proof.html" data-text="ledger">Proof and Lean source</a>
+      <a href="./proof.html#results" data-text="resultsLink">What the proof settles</a></nav><span data-text="controls">Keyboard, mouse or touch</span></div>
     </div>
     <section id="hud" aria-label="Exhibition controls" data-label="hud" hidden>
       <div class="location">
@@ -61,11 +62,19 @@
         <div class="touch-arrows" aria-label="Movement" data-label="movement"><button type="button" data-move="KeyW" aria-label="Forward" data-label="forward">▲</button><div><button type="button" data-move="KeyA" aria-label="Left" data-label="left">◀</button><button type="button" data-move="KeyS" aria-label="Back" data-label="back">▼</button><button type="button" data-move="KeyD" aria-label="Right" data-label="right">▶</button></div></div>
       </div>
     </section>
-    <div id="player-hands" class="player-hands" aria-hidden="true"><div class="glove glove-left"><i></i></div><div class="glove glove-right"><i></i></div></div>
+    <canvas id="player-hands" class="player-hands" aria-hidden="true"></canvas>
     <div id="piece-handles" aria-hidden="true"></div>
+    <div id="inspection-controls" class="inspection-controls" hidden>
+      <span data-text="orbitHintUI">Drag the scene to look around the work.</span>
+      <div role="group" data-label="rotateView">
+        <button type="button" id="orbit-left" data-label="orbitLeft">−</button>
+        <button type="button" id="orbit-reset" data-text="frontView">Front view</button>
+        <button type="button" id="orbit-right" data-label="orbitRight">+</button>
+      </div>
+    </div>
     <section class="exhibit" id="panel" aria-labelledby="panel-title" hidden>
       <header class="panel-header"><div><p class="overline" id="panel-kicker"></p><h2 id="panel-title"></h2></div><button type="button" class="close" id="close-panel" aria-label="Close installation" data-label="closePanel">×</button></header>
-      <p class="instruction" id="instruction"></p>
+      <div class="task-brief"><strong data-text="yourTask">Your task</strong><p class="instruction" id="instruction"></p></div>
       <div id="puzzle"></div>
       <div class="panel-bottom">
         <details id="context"><summary data-text="context">The mathematics</summary><p id="context-body"></p><nav class="panel-sources"><a id="context-link" target="_blank" rel="noopener" data-text="source">Read the source</a><a id="room-ledger" data-text="ledger" href="./proof.html" target="_blank" rel="noopener">Proof and Lean source</a></nav></details>
@@ -78,7 +87,7 @@
       <p class="overline" data-text="complete">Exhibition complete</p>
       <h2 data-text="ending">A Line of Light.</h2>
       <p data-text="endingText">The seven fragments meet in the central hall.</p>
-      <button type="button" class="tiny-button" id="close-final" data-text="returnHall">Back to the hall</button>
+      <div class="final-actions"><a class="tiny-button" href="./proof.html#results" data-text="resultsLink">What the proof settles</a><button type="button" class="secondary-button" id="close-final" data-text="returnHall">Back to the hall</button></div>
     </div>
     <dialog id="map" aria-labelledby="map-title">
       <div class="dialog-head"><h2 id="map-title" data-text="map">Floor plan</h2><form method="dialog"><button class="close" aria-label="Close floor plan" data-label="closeMap">×</button></form></div>
@@ -104,6 +113,7 @@
       <div class="dialog-head"><h2 id="notes-title" data-text="notes">Exhibition notes</h2><form method="dialog"><button class="close" aria-label="Close exhibition notes" data-label="closeNotes">×</button></form></div>
       <p data-text="notesText">The seven installations trace the proof from prime powers to a zero-free half-plane, then to the critical line and the Lean checks.</p>
       <ul class="source-links">
+        <li><a href="./proof.html#results" data-text="resultsLink">What the proof settles</a></li>
         <li><a href="./proof.html" data-text="ledger">Proof and Lean source</a></li>
         <li><a href="https://alpo.ge/remark.pdf" target="_blank" rel="noopener" data-text="announcement">Levent Alpöge’s proof announcement</a></li>
         <li><a href="https://leanprover-community.github.io/blog/posts/riemann-hypothesis/" target="_blank" rel="noopener" data-text="leanStatement">Lean and Mathlib’s joint statement</a></li>

@@ -1,5 +1,6 @@
 import {getLanguage, saveLanguage} from './museum-i18n.mjs';
 import {announcement, guide, lean, proofLinks} from './proof-copy.mjs';
+import {renderResults, resultCopy} from './proof-results.mjs';
 import {proofOrder, stations} from './gallery-layout.mjs';
 
 const verification = 'https://leanprover-community.github.io/blog/posts/riemann-hypothesis/';
@@ -36,7 +37,7 @@ const text = {
     sections:[
       ['The claim', 'What is a zero?', [
         'A zero is an input where the zeta function evaluates to zero. Its trivial zeros occur at negative even integers. The proof concerns the nontrivial zeros in the strip between real parts 0 and 1.',
-        'The lights in the first room use measured imaginary parts. This is a way to read the coordinates. The proof must exclude points off the line at every height, including those no one has computed.',
+        'The lights in the first room use numerically computed imaginary parts. This is a way to read the coordinates. The proof must exclude points off the line at every height, including those no one has computed.',
       ]],
       ['The explicit formula', 'How primes reveal zeros', [
         'Use Λ(n) = log p when n is a power of a prime p and zero otherwise. Weight each contribution by x/n − 1, so terms enter smoothly at the cutoff. Removing the smooth main term leaves G₁(x). Here γ is Euler’s constant. The Dirichlet-character version inserts χ(n) and uses the corresponding main term.',
@@ -154,6 +155,10 @@ function render(language) {
     steps.append(chapter);
     nav.append(link('#' + chapter.id, label));
   });
+  const results = resultCopy(language);
+  nav.append(link('#results', results.summary));
+  el('results-title').textContent = results.summary;
+  renderResults(el('results-content'), language);
   for (const button of document.querySelectorAll('[data-lang]')) {
     button.setAttribute('aria-pressed', String(button.dataset.lang === language));
   }
