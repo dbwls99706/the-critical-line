@@ -1,6 +1,7 @@
 import { createWorld } from './museum-world.mjs';
 import { hall } from './gallery-layout.mjs';
 import { attachPlans, placeOnPlan } from './museum-plan.mjs';
+import { mountZeroAtlas } from './zero-atlas.mjs';
 import { copy, getLanguage, saveLanguage } from './museum-i18n.mjs';
 
 const get = (id) => document.getElementById(id);
@@ -583,6 +584,7 @@ for (const button of languageButtons) {
     renderLanguage();
   });
 }
+mountZeroAtlas(get('zero-atlas'), reducedMotion);
 attachPlans();
 placeOnPlan(get('mini-you'), visitorX, visitorZ);
 renderLanguage();

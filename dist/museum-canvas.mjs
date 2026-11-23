@@ -94,8 +94,31 @@ export function createCanvasRenderer(THREE, canvas) {
     draw.push({
       pixels, depth: index === -1 ? 10000 : depth, opacity,
       color: shade(shadeHex, light, index === -1 ? 4 : depth, warm),
-      image, minX, maxX, minY, maxY,
+      image, minX, maxX, minY, maxY, fullImage: points.every((point) => point[2] >= near),
     });
+  }
+
+  function paintPlane(ctx, face) {
+    const {image, pixels} = face;
+    const [bottomLeft, bottomRight, topRight, topLeft] = pixels;
+    function triangle(origin, alongX, alongY, vertices) {
+      ctx.save();
+      path(ctx, vertices);
+      ctx.clip();
+      ctx.transform(
+        (alongX[0] - origin[0]) / image.width, (alongX[1] - origin[1]) / image.width,
+        (alongY[0] - origin[0]) / image.height, (alongY[1] - origin[1]) / image.height,
+        origin[0], origin[1],
+      );
+      ctx.drawImage(image, 0, 0);
+      ctx.restore();
+    }
+    triangle(topLeft, topRight, bottomLeft, [topLeft, topRight, bottomLeft]);
+    const farOrigin = [
+      bottomLeft[0] + topRight[0] - bottomRight[0],
+      bottomLeft[1] + topRight[1] - bottomRight[1],
+    ];
+    triangle(farOrigin, topRight, bottomLeft, [topRight, bottomRight, bottomLeft]);
   }
 
   function renderFaces(ctx, draw) {
@@ -105,7 +128,9 @@ export function createCanvasRenderer(THREE, canvas) {
       path(ctx, face.pixels);
       ctx.fillStyle = face.color;
       ctx.fill();
-      if (face.image) {
+      if (face.image && face.fullImage) {
+        paintPlane(ctx, face);
+      } else if (face.image) {
         ctx.save();
         ctx.clip();
         ctx.drawImage(face.image, face.minX, face.minY, face.maxX - face.minX, face.maxY - face.minY);
@@ -243,7 +268,7 @@ export function createCanvasRenderer(THREE, canvas) {
         box(object, matrix, batch);
       } else if (type === 'RingGeometry' || type === 'CylinderGeometry') {
         rings(object, matrix, batch);
-      } else if (type === 'PlaneGeometry' && object.material.map?.image?.width === 768) {
+      } else if (type === 'PlaneGeometry' && object.userData.paintedPlane) {
         const dimensions = object.geometry.parameters;
         const points = corners.slice(0, 4).map(([x,y]) => viewPoint(matrix,x * dimensions.width,y * dimensions.height,0));
         addFace(batch, points, '211916', 1, 0, 1, 0, object.material.map.image);

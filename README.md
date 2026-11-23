@@ -12,6 +12,8 @@ A first-person, browser-based exhibition about the Riemann hypothesis and its pu
 - **Touch** - Use the directional buttons and drag the view. Tap an installation to open it.
 - **Floor plan** - See where you are and jump to any installation. The colored routes match the markers on the floor.
 
+The entrance and the left wall display a star chart based on the first 24 positive [zeta zero heights](https://www.lmfdb.org/zeros/zeta/) and their reflections.
+
 English is the default. Switch to Korean with **KO** at the top of the screen. Your language and collected light fragments stay in this browser. The hosted site is private.
 
 ## Run locally

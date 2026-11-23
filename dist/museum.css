@@ -43,8 +43,42 @@ a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visibl
 #world:active { cursor: grabbing; }
 .lighting, .intro-shade, .scene-fade { position: absolute; inset: 0; pointer-events: none; }
 .lighting { background: radial-gradient(ellipse at 55% 42%, transparent 40%, #09082545 105%), linear-gradient(0deg,#100e15aa,transparent 23%,transparent 85%,#100e1544); }
-.intro-shade { background: linear-gradient(90deg,#100f14df 0%,#18161896 29%,#18161800 59%), linear-gradient(0deg,#171219a0 0%,transparent 20%); transition: opacity .45s; }
-body.playing .intro-shade { opacity: 0; }
+.intro-sky {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: min(69%, 74rem);
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 22% 12%, #242039a8 0%, transparent 48%),
+    radial-gradient(ellipse at 60% 75%, #3a294ab0 0%, transparent 54%),
+    radial-gradient(ellipse at 58% 100%, #623c3a60 0%, transparent 60%),
+    linear-gradient(112deg, #0d0d19 0%, #171523 65%, #1c1722 100%);
+  mask-image: linear-gradient(90deg, #000 68%, #000b 81%, transparent 100%);
+  transition: opacity .45s ease;
+}
+.intro-sky::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url("art/observatory-sky.webp") 50% 64% / cover no-repeat;
+  opacity: .78;
+}
+#zero-atlas {
+  display: block;
+  position: absolute;
+  inset: -2%;
+  width: 104%;
+  height: 104%;
+  transform: translate(var(--atlas-x, 0), var(--atlas-y, 0));
+  transition: transform .45s cubic-bezier(.2,.6,.3,1);
+}
+.intro-shade {
+  background: linear-gradient(90deg, #0d0c17a8 0%, #12101b78 25%, transparent 54%),
+    linear-gradient(0deg,#171219a0 0%,transparent 20%);
+  transition: opacity .45s;
+}
+body.playing .intro-shade, body.playing .intro-sky { opacity: 0; }
 .scene-fade { z-index: 8; opacity: 0; background: #100e12; transition: opacity .25s ease; }
 .scene-fade.active { opacity: 1; }
 .bar { position: absolute; top: 0; left: 0; right: 0; z-index: 4; padding: clamp(1rem, 3.5vw, 2rem) clamp(1.1rem,4.6vw,4.5rem); display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; pointer-events: none; }
@@ -201,7 +235,9 @@ html[lang="ko"] .room-name { font: 620 .99rem/1.24 var(--sans); letter-spacing: 
 @media (max-width: 700px) {
   .lighting { background: radial-gradient(ellipse at center,transparent 37%,#100e15a1); }
   .intro { align-items: flex-end; }
-  .intro-shade { background: linear-gradient(0deg,#100f14ed 0%,#100f14a0 37%,transparent 70%); }
+  .intro-sky { inset: auto 0 0; width: 100%; height: 62%; mask-image: linear-gradient(0deg,#000 56%,transparent 100%); }
+  .intro-sky::before { background-position: 50% 59%; }
+  .intro-shade { background: linear-gradient(0deg,#100f14a0 0%,#100f147c 30%,transparent 67%); }
   .intro-copy { margin: 0 1.15rem min(12.5vh,7rem); transform: none; }
   .intro h1 { font-size: clamp(4.7rem, 15.9vw, 7.8rem); }
   .intro-description { margin: 1rem 0; font-size: .95rem; }

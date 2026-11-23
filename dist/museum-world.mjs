@@ -3,6 +3,7 @@ import { createSculpture } from './museum-sculpture.mjs';
 import { createExhibits } from './museum-exhibits.mjs';
 import { createCanvasRenderer } from './museum-canvas.mjs';
 
+import { drawZeroAtlas } from './zero-atlas.mjs';
 import { columnRows, columnX, hall, routes, stations } from './gallery-layout.mjs';
 
 const borders = {left: -12.1, right: 12.1, front: 10.1, back: -24.4};
@@ -94,8 +95,10 @@ function artworkSign(parent, title, label, position, ink) {
   context.fillText(title, 384, 127);
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
-  return finish(parent, new THREE.PlaneGeometry(2.55, .64),
+  const sign = finish(parent, new THREE.PlaneGeometry(2.55, .64),
     new THREE.MeshBasicMaterial({map: texture}), ...position);
+  sign.userData.paintedPlane = true;
+  return sign;
 }
 
 function spotHalo(parent, texture, color, x, y, z, width, depth, alpha) {
@@ -134,11 +137,22 @@ function makeRoom(scene) {
       solid(scene, bronze, [.77, .12, .83], [side * columnX, 6.9, z]);
       solid(scene, goldenStrip, [.022, 4.9, .025], [side * columnX - side * .355, 4.1, z + .385]);
       columns.push([side * columnX, z, .55]);
+      if (side === -1 && z === .55) continue;
       solid(scene, panel, [.15, 6.9, 3.95], [side * 12.55, 3.62, z - 1.2]);
       solid(scene, bronze, [.023, 6.8, 3.98], [side * 12.46, 3.65, z - 1.2]);
       solid(scene, goldenStrip, [.023, .022, 1.20], [side * 12.42, .51, z - 1.2]);
     }
   }
+
+  const atlasCanvas = document.createElement('canvas');
+  drawZeroAtlas(atlasCanvas, {width: 752, height: 840, framed: true});
+  const atlasTexture = new THREE.CanvasTexture(atlasCanvas);
+  atlasTexture.colorSpace = THREE.SRGBColorSpace;
+  solid(scene, bronze, [.07, 4.66, 4.21], [-12.47, 2.92, -.65]);
+  const atlas = finish(scene, new THREE.PlaneGeometry(4.05, 4.52),
+    new THREE.MeshBasicMaterial({map: atlasTexture, toneMapped: false}), -12.36, 2.92, -.65);
+  atlas.rotation.y = Math.PI / 2;
+  atlas.userData.paintedPlane = true;
 
   routes.forEach((path, index) => {
     const material = new THREE.MeshBasicMaterial({color: stations[index].color, transparent: true, opacity: .48});
