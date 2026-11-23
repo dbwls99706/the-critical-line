@@ -26,6 +26,52 @@ function readings(root, values) {
   });
 }
 
+export function mountPrimeErrorModel(root, words, scale) {
+  const section = node('section', 'prime-error-model');
+  section.append(node('h3', '', words.title), node('p', 'prime-error-copy', words.explanation));
+  const example = node('div', 'prime-count-example');
+  example.append(node('strong', '', words.example));
+  const values = node('dl');
+  for (const [label, value] of [[words.estimate, '≈ 1,246'], [words.exact, '1,229']]) {
+    const column = node('div');
+    column.append(node('dt', '', label), node('dd', '', value));
+    values.append(column);
+  }
+  example.append(values);
+  section.append(example);
+
+  const chartTitle = node('p', 'prime-error-heading', words.comparison);
+  const plot = node('dl', 'prime-error-bars');
+  const rows = [words.reference + ' · ½', ''].map((label) => {
+    const row = node('div');
+    const name = node('dt', '', label);
+    const value = node('dd');
+    const track = node('span', 'prime-error-track');
+    const bar = node('span', 'prime-error-fill');
+    const result = node('span', 'prime-error-factor');
+    track.setAttribute('aria-hidden', 'true');
+    track.append(bar);
+    value.append(track, result);
+    row.append(name, value);
+    plot.append(row);
+    return {name, bar, result};
+  });
+  plot.setAttribute('aria-live', 'polite');
+  plot.setAttribute('aria-atomic', 'true');
+  section.append(chartTitle, plot, node('p', 'prime-error-caption', words.caption));
+  root.append(section);
+
+  const max = scale ** .25;
+  return (index, beta) => {
+    const factors = [1, scale ** (beta - .5)];
+    rows[1].name.textContent = words.position(index + 1) + ' · ' + (beta === .5 ? '½' : beta.toFixed(3));
+    rows.forEach(({bar, result}, i) => {
+      bar.style.width = 100 * factors[i] / max + '%';
+      result.textContent = Number(factors[i].toFixed(2)) + '×';
+    });
+  };
+}
+
 function formula(root, text) {
   root.append(node('p', 'model-formula', text));
 }

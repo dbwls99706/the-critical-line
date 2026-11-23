@@ -373,3 +373,24 @@ body.puzzle-open .location, body.puzzle-open .bottom-hud { visibility: hidden; }
 .intro-links { display: flex; flex-wrap: wrap; gap: .3rem 1.2rem; }
 
 @media (pointer: coarse) { .touch-arrows button { width: clamp(2rem, 10vw, 2.75rem); height: clamp(2rem, 10vw, 2.75rem); } }
+
+.prime-error-model { margin: .7rem 0; padding: .7rem .78rem; border: 1px solid #a9d6df55; background: #151e26; }
+.prime-error-model h3 { margin: 0; font-size: .97rem; color: var(--exhibit); }
+.prime-error-copy { margin: .3rem 0 .55rem; font-size: .84rem; line-height: 1.45; color: #ebe5da; }
+.prime-count-example, .prime-count-example dl { display: flex; align-items: center; justify-content: space-between; gap: .35rem .62rem; flex-wrap: wrap; }
+.prime-count-example { padding: .42rem 0; border-block: 1px solid #a9d6df3c; }
+.prime-count-example strong { font-size: .79rem; color: #f4ead9; }
+.prime-count-example dl { margin: 0; }
+.prime-count-example dl div { display: flex; gap: .26rem; align-items: baseline; }
+.prime-count-example dt, .prime-error-heading { font-size: .73rem; color: #d0d6d6; }
+.prime-count-example dd { margin: 0; font: .8rem var(--mono); color: #aee7ee; }
+.prime-error-heading { margin: .45rem 0 .28rem; font-weight: 650; }
+.prime-error-bars { display: grid; gap: .32rem; margin: 0; }
+.prime-error-bars > div { display: grid; grid-template-columns: minmax(5.8rem, 35%) minmax(0, 1fr); align-items: center; }
+.prime-error-bars dt { font-size: .78rem; color: #ebe5da; }
+.prime-error-bars dd { display: grid; grid-template-columns: minmax(0, 1fr) 3.2rem; align-items: center; gap: .35rem; margin: 0; }
+.prime-error-track { display: flex; height: .36rem; background: #c4d9e126; }
+.prime-error-fill { background: #dcbb82; width: 0; }
+.prime-error-bars > div:last-child .prime-error-fill { background: #91e2f2; }
+.prime-error-factor { color: #b4edf2; text-align: right; font: .75rem var(--mono); }
+.prime-error-caption { margin: .35rem 0 0; font-size: .71rem; line-height: 1.35; color: #bdc9d0; }

@@ -5,7 +5,7 @@ import { mountZeroAtlas } from './zero-atlas.mjs';
 import { copy, getLanguage, saveLanguage } from './museum-i18n.mjs';
 import { proofCopy, proofLinks } from './proof-copy.mjs';
 import { resultCopy } from './proof-results.mjs';
-import { workshops } from './proof-workbench.mjs';
+import { mountPrimeErrorModel, workshops } from './proof-workbench.mjs';
 
 const get = (id) => document.getElementById(id);
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -113,7 +113,7 @@ function updateFrame(x, z, room, yaw) {
     const points = world.handlePositions(activeRoom);
     sceneHandles.forEach((handle, i) => {
       const spot = points[i];
-      handle.hidden = !spot?.[2] || states[activeRoom].done;
+      handle.hidden = !spot?.[2] || (activeRoom !== 0 && states[activeRoom].done);
       if (handle.hidden) return;
       handle.style.left = spot[0] + '%';
       handle.style.top = spot[1] + '%';
@@ -277,25 +277,25 @@ function addSlider(container, labelText, accessibleLabel, minimum, maximum, step
 
 function criticalPuzzle(root) {
   const state = states[0];
-  const sliders = [];
+  const showGrowth = mountPrimeErrorModel(root, words.firstRoom, 10_000);
+  const realPart = (i) => .5 + state.values[i] * .16;
+  let ready = false;
+  showGrowth(1, realPart(1));
   waveHeights.forEach((height, i) => {
     const slider = addSlider(root, height + 'i', words.lightSlider(i + 1), -1.5, 1.5, .05, state.values[i], (value, output, input) => {
       const aligned = Math.abs(value) <= .1;
       state.values[i] = aligned ? 0 : value;
       input.classList.toggle('aligned', aligned);
-      output.textContent = aligned ? words.aligned : (0.5 + value * .16).toFixed(2);
+      output.textContent = aligned ? words.aligned : realPart(i).toFixed(3);
+      if (ready) showGrowth(i, realPart(i));
       input.setAttribute('aria-valuetext', aligned ? words.alignedReadout : words.realPart(output.textContent));
       const count = state.values.filter((position) => position === 0).length;
       feedback.textContent = words.alignment(count);
-      if (count === 3 && !state.done) {
-        complete(0);
-        for (const control of sliders) control.disabled = true;
-        input.disabled = true;
-      }
+      if (count === 3) complete(0);
     });
-    slider.disabled = state.done;
-    sliders.push(slider);
+    slider.addEventListener('focus', () => showGrowth(i, realPart(i)));
   });
+  ready = true;
   const axisLabel = document.createElement('p');
   axisLabel.className = 'puzzle-caption';
   axisLabel.textContent = words.axis;
@@ -398,7 +398,7 @@ const puzzleScenes = [criticalPuzzle, reflectionPuzzle, kernelPuzzle];
 function addHandles(room, root) {
   handlesLayer.replaceChildren();
   sceneHandles = [];
-  if (!world || room > 1 || states[room].done) return;
+  if (!world || room > 1 || (room !== 0 && states[room].done)) return;
   const controls = [...root.querySelectorAll('input[type="range"]')];
   controls.forEach((control, i) => {
     const handle = document.createElement('div');
