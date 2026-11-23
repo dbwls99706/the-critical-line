@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b111c">
+  <meta name="description" content="리만가설의 공개 Lean 증명에서 출발해, 거대한 구간에 들어 있는 소수의 개수를 어디까지 보장할 수 있는지 실험합니다.">
+  <title>리만 증명 실험실 · Riemann Proof Lab</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="favicon.png">
+  <script type="module" src="app.mjs"></script>
+</head>
+<body>
+  <a class="skip" href="#experiment">실험으로 건너뛰기</a>
+  <header class="site-header">
+    <div class="shell topbar">
+      <a class="brand" href="#top"><span class="brand-mark" aria-hidden="true">ζ</span><span>RIEMANN <strong>PROOF LAB</strong></span></a>
+      <nav aria-label="주 메뉴"><a href="#experiment">소수 실험</a><a href="#proof">Lean 코드</a><a href="#sources">출처</a></nav>
+      <a class="header-status" href="#verification"><i></i> 독립 검사 통과</a>
+    </div>
+  </header>
+  <main id="top">
+    <section class="hero shell" aria-labelledby="title">
+      <div class="hero-copy">
+        <p class="eyebrow"><span></span> 2026.11.20 <b>/</b> LEAN 4</p>
+        <h1 id="title">리만 증명,<br><em>코드에서 숫자로.</em></h1>
+        <p>공개된 Lean 증명을 따라가고, 거대한 수 사이에 소수가 몇 개나 있는지 실험해 보세요.</p>
+        <div class="hero-actions"><a class="button primary" href="#experiment">구간 실험 시작</a><a class="button ghost" href="#proof">증명 코드 보기</a></div>
+      </div>
+      <figure class="hero-figure">
+        <div class="figure-top"><span><i></i> 소수 개수의 보장 범위</span><span id="top-scale" class="mono">a = 10³⁰</span></div>
+        <div class="plot-box"><canvas id="bound-plot" role="img" aria-label="구간 길이에 따른 소수 개수의 상한과 하한"></canvas></div>
+        <div class="figure-bottom"><span><i></i> 계산 가능한 상·하한</span><span>구간 길이 Δ <b class="mono">/</b> 로그 눈금</span></div>
+      </figure>
+    </section>
+    <div class="status-strip">
+      <div class="shell strip-inner">
+        <a href="#proof"><b class="mono">175,187</b><span>컴파일된 Lean 모듈</span></a>
+        <a href="#verification"><b class="mono">nanoda · con-leche</b><span>독립 커널 검사 통과</span></a>
+        <a href="#experiment"><b class="formula-type">π(b) − π(a)</b><span>(a, b]에 들어 있는 소수 개수</span></a>
+      </div>
+    </div>
+    <section class="shell experiment section" id="experiment" aria-labelledby="experiment-title">
+      <div class="section-heading">
+        <p class="eyebrow"><span></span> PRIME INTERVAL EXPERIMENT</p>
+        <h2 id="experiment-title">세지 않고, 어디까지 알 수 있을까?</h2>
+        <p>구간의 양 끝에 리만가설에서 따르는 오차 한계를 적용합니다. 작은 구간은 직접 세어서 결과와 대조할 수 있습니다.</p>
+      </div>
+      <div class="workbench">
+        <form class="controls" id="interval-form">
+          <div class="panel-head"><h3>탐사 구간</h3><span class="mono">(a, a + Δ]</span></div>
+          <div class="presets" aria-label="구간 예시">
+            <button type="button" data-case="small">직접 세기</button><button type="button" data-case="edge">보장 경계</button><button type="button" data-case="huge">10<sup>30</sup> 근처</button>
+          </div>
+          <label for="start">시작점 <span class="mono">a</span></label>
+          <input type="text" id="start" value="1e30" spellcheck="false" autocomplete="off" maxlength="70">
+          <label for="width">구간 길이 <span class="mono">Δ</span></label>
+          <input type="text" id="width" value="1e18" spellcheck="false" autocomplete="off" maxlength="70">
+          <div class="range-line"><input type="range" id="width-scale" min="-20" max="20" value="0" step="1" aria-label="구간 길이 조정"><output id="scale-value" for="width-scale">×1.00</output></div>
+          <p class="input-help">정수 또는 <code>1e30</code> 형식. 시작점 2,657 이상, 끝점 10<sup>60</sup> 이하.</p>
+          <button class="button primary run" type="submit">오차 범위 계산</button>
+          <p class="form-error" id="form-error" role="alert" hidden></p>
+        </form>
+        <div class="results" id="results">
+          <div class="panel-head"><h3>소수 개수</h3><span id="range-state" class="state">하한 계산됨</span></div>
+          <div class="range-result" aria-live="polite">
+            <div><span>최소</span><strong id="lower">…</strong></div>
+            <div><span>최대</span><strong id="upper">…</strong></div>
+          </div>
+          <p class="result-note" id="result-note"></p>
+          <div class="range-band" id="range-band" aria-hidden="true"><div class="bound-band"></div><i id="exact-mark" hidden></i></div>
+          <div class="band-labels"><span id="left-label">하한</span><span id="right-label">상한</span></div>
+          <div id="exact-section" class="exact-section" hidden><button type="button" class="text-button" id="count-exact">실제 소수 직접 세기</button><span id="exact-copy" aria-live="polite"></span></div>
+          <div class="result-actions">
+            <button class="button ghost" type="button" id="download">계산 기록 받기</button>
+            <label class="button ghost file-button" for="receipt-file">기록 다시 검사</label><input class="visually-hidden" id="receipt-file" type="file" accept=".json,application/json">
+          </div>
+          <p class="file-message" id="receipt-message" role="status" hidden></p>
+        </div>
+      </div>
+      <details class="method" id="method">
+        <summary>계산식과 정수 반올림 방식</summary>
+        <div class="method-body">
+          <p>Schoenfeld의 부등식은 <i>x</i> ≥ 2,657에서 <span class="math">|π(x) − li(x)| &lt; √x ln(x) / (8π)</span>를 줍니다. 끝점 오차의 합을 빼고 더하면 구간의 개수 한계가 됩니다.</p>
+          <p>중심값 <span class="math">li(b) − li(a)</span>는 <span class="math">Δ / ln(b)</span>와 <span class="math">Δ / ln(a)</span> 사이입니다. 자연로그 급수의 나머지와 정수 제곱근을 바깥 방향으로 반올림해 안전한 정수 범위를 계산합니다. 그래프 좌표는 표시용으로 근사합니다.</p>
+          <p>계산 기록에는 입력, 정수 범위, 계산에 쓴 오차 상한과 증명 파일의 기준 SHA-256이 들어갑니다.</p>
+          <a href="https://www.ams.org/mcom/1976-30-134/S0025-5718-1976-0457374-X/S0025-5718-1976-0457374-X.pdf" target="_blank" rel="noopener">Schoenfeld, 1976 · Corollary 1</a>
+        </div>
+      </details>
+    </section>
+    <section class="proof-section" id="proof" aria-labelledby="proof-title">
+      <div class="shell section">
+        <div class="section-heading">
+          <p class="eyebrow"><span></span> LEAN SOURCE</p>
+          <h2 id="proof-title">정리는 어디서 들어올까?</h2>
+          <p>공개 코드의 진입점과 MIT 검증팀이 약수합 부등식까지 연결한 코드를 열어보세요.</p>
+        </div>
+        <div class="source-grid">
+          <div class="source-guide">
+            <button type="button" class="source-choice" data-source="main" aria-pressed="true"><span class="mono">Main.lean</span><b>리만가설의 정리 선언</b><small>Alpöge의 공개 증명 패키지</small></button>
+            <button type="button" class="source-choice" data-source="arithmetic" aria-pressed="false"><span class="mono">ArithSolution.lean</span><b>약수합으로 이어지는 코드</b><small>MIT 검증팀의 독립 결합</small></button>
+            <div class="source-explanation" id="source-explanation"></div>
+          </div>
+          <div class="editor">
+            <div class="editor-head"><span class="mono" id="file-path">src/Main.lean</span><a id="upstream" target="_blank" rel="noopener">파일 원문</a></div>
+            <pre><code id="source-code">원본의 주요 줄을 불러오는 중</code></pre>
+            <div class="integrity">
+              <div class="hash-header"><span>파일 지문 <b class="mono">SHA-256</b></span><span id="hash-status" class="state" role="status">확인 중</span></div>
+              <code id="hash-output"></code>
+              <div class="hash-actions"><button type="button" class="text-button" id="tamper">한 바이트 변경 실험</button><label class="text-button file-button" for="lean-file">내 파일 비교</label><input class="visually-hidden" type="file" id="lean-file"></div>
+              <p class="integrity-note" id="hash-note" role="status">파일의 바이트 지문을 비교합니다. 정리 검증 결과는 아래 독립 검사 기록에서 확인할 수 있습니다.</p>
+            </div>
+          </div>
+        </div>
+        <div class="verification" id="verification">
+          <div><p class="eyebrow"><span></span> VERIFICATION RECORD</p><h3>검증 기관의 기록</h3></div>
+          <div class="verification-list">
+            <a href="https://leanprover-community.github.io/blog/posts/riemann-hypothesis/" target="_blank" rel="noopener"><strong>Lean · Mathlib</strong><span>2026.11.21 · 증명 및 명제 일치 공동 성명</span></a>
+            <a href="https://math.mit.edu/~drew/grh/" target="_blank" rel="noopener"><strong>Andrew Sutherland · MIT</strong><span>2026.11.22 · 175,187개 모듈과 독립 커널 검사</span></a>
+            <a href="https://www.claymath.org/millennium/riemann-hypothesis/" target="_blank" rel="noopener"><strong>Clay Mathematics Institute</strong><span>2026.11.23 확인 · 밀레니엄 문제 페이지는 Unsolved 표시</span></a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer id="sources">
+    <div class="shell footer-inner">
+      <div><a class="brand" href="#top"><span class="brand-mark" aria-hidden="true">ζ</span><span>RIEMANN <strong>PROOF LAB</strong></span></a><p>증명 원저자 Levent Alpöge. 검증 기록 기준 2026년 11월 23일.</p></div>
+      <div class="footer-links">
+        <a href="https://alpo.ge/remark.pdf" target="_blank" rel="noopener">원 발표</a>
+        <a href="https://alexisdpc.github.io/riemann/sources.html" target="_blank" rel="noopener">소스 보관 기록</a>
+        <a href="https://d-nb.info/1270387197/34" target="_blank" rel="noopener">유한 범위 검증 연구</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>
