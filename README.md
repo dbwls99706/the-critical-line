@@ -8,8 +8,8 @@ The Critical Line is a first-person exhibition about the Riemann hypothesis. The
 
 ## Walk through
 
-- **Keyboard** - WASD to walk, Shift to run, Space to jump, E to open an installation, and F to punch. Drag to look around or click the floor to walk there.
-- **Touch** - Use the movement pad and drag to look around. Tap a nearby installation to open it.
+- **Keyboard** - WASD to walk, Shift to run, Space to jump, E to interact, and F to punch. After collecting all seven fragments, walk back to the central piece and press E to light it. Drag to look around or click the floor to walk there.
+- **Touch** - Use the movement pad and drag to look around. Tap a nearby installation to open it, or tap the prompt to light the central piece.
 - **Floor plan** - Pick a waypoint and follow the brass trail on foot. Each installation opens head-on. Drag the scene to look around the sculpture or use the view buttons. Closing it returns you to your original position.
 
 The atlas on the entrance wall uses the first 24 positive [zeta zero heights](https://www.lmfdb.org/zeros/zeta/) and their reflections. EN is the default. Switch to KO from the top bar.

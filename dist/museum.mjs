@@ -1,5 +1,5 @@
 import { createWorld } from './museum-world.mjs';
-import { hall, proofOrder, stations } from './gallery-layout.mjs';
+import { hall, hallPiece, proofOrder, stations } from './gallery-layout.mjs';
 import { attachPlans, placeOnPlan, showPlanTarget } from './museum-plan.mjs';
 import { mountZeroAtlas } from './zero-atlas.mjs';
 import { copy, getLanguage, saveLanguage } from './museum-i18n.mjs';
@@ -12,12 +12,15 @@ const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const intro = get('intro');
 const hud = get('hud');
 const panel = get('panel');
+const engage = get('engage');
+const engageLabel = engage.querySelector('span');
 const map = get('map');
 const notes = get('notes');
 const feedback = get('feedback');
 const languageButtons = [...document.querySelectorAll('[data-language]')];
 const compass = get('waypoint');
 const returnTarget = {x: 0, z: -.65};
+const finaleRange = 5.8;
 const routeButtons = [...document.querySelectorAll('[data-room]')].filter((item) => item.tagName === 'BUTTON');
 const handlesLayer = get('piece-handles');
 let sceneHandles = [];
@@ -90,25 +93,27 @@ function announce(text) {
 }
 
 function updateFrame(x, z, room, yaw) {
-  if (room !== lastLocation) {
+  const roomChanged = room !== lastLocation;
+  const moved = visitorX !== x || visitorZ !== z;
+  if (roomChanged) {
     lastLocation = room;
     nearby = room;
     renderLocation(room);
   }
-  if (visitorX !== x || visitorZ !== z) {
+  if (moved) {
     visitorX = x;
     visitorZ = z;
     placeOnPlan(get('mini-you'), x, z);
     if (map.open) placeOnPlan(get('floor-you'), x, z);
-    renderFinaleButton();
   }
+  if (roomChanged || moved) renderInteraction();
   const target = targetRoom === null ? returnTarget : stations[targetRoom];
   if (target) {
     const delta = Math.atan2(-(target.x - x), -(target.z - z)) - yaw;
     compass.style.setProperty('--bearing', `${-delta}rad`);
   }
   compass.hidden = !target || !world || nearby === targetRoom || activeRoom !== null ||
-    (targetRoom === null && Math.hypot(x, z + 4) < 5.8);
+    (targetRoom === null && inFinaleRange());
   if (activeRoom !== null && sceneHandles.length > 0) {
     const points = world.handlePositions(activeRoom);
     sceneHandles.forEach((handle, i) => {
@@ -129,8 +134,6 @@ function renderLocation(room) {
   get('map-location').textContent = words.mapLocation(title);
   get('location-hint').textContent = exhibit?.hint ?? (started && !world ? words.no3d :
     targetRoom === null ? words.finishHint : words.hallHint);
-  get('engage').hidden = !exhibit || activeRoom !== null || !get('final-card').hidden;
-  get('engage').querySelector('span').textContent = words.interact;
 }
 
 function galleryLabel(room) {
@@ -162,6 +165,7 @@ function renderLanguage() {
 }
 
 function syncWorld() {
+  renderInteraction();
   world?.setStates(states);
   world?.suspend(!started || activeRoom !== null || finalePlaying || map.open || notes.open || !get('final-card').hidden);
 }
@@ -172,12 +176,27 @@ function updateProgress() {
     const completed = earned.has(Number(link.dataset.room));
     link.querySelector('small').textContent = completed ? words.visits : '';
   }
-  renderFinaleButton();
+  renderInteraction();
   world?.setStates(states);
 }
 
-function renderFinaleButton() {
-  get('finale').hidden = earned.size !== proofSize || (!!world && Math.hypot(visitorX, visitorZ + 4) >= 5.8);
+function inFinaleRange() {
+  return Math.hypot(visitorX - hallPiece.x, visitorZ - hallPiece.z) < finaleRange;
+}
+
+function renderInteraction() {
+  const canLight = earned.size === proofSize && (!world || inFinaleRange());
+  engage.hidden = !started || activeRoom !== null || finalePlaying || !get('final-card').hidden ||
+    (nearby < 0 && !canLight);
+  if (engage.hidden) return;
+  const label = nearby >= 0 ? words.interact : words.ignite;
+  if (engageLabel.textContent !== label) engageLabel.textContent = label;
+}
+
+function interact() {
+  if (engage.hidden || map.open || notes.open) return;
+  if (nearby >= 0) openPanel(nearby);
+  else showFinale();
 }
 
 function renderWaypoint() {
@@ -229,10 +248,7 @@ function closePanel(returnFocus = true) {
   world?.releaseFocus();
   lastLocation = -2;
   syncWorld();
-  if (returnFocus) {
-    get('engage').hidden = nearby < 0 || nearby === null;
-    if (!get('engage').hidden) get('engage').focus({preventScroll: true});
-  }
+  if (returnFocus && !engage.hidden) engage.focus({preventScroll: true});
 }
 
 function setPanelCompletion(room) {
@@ -438,7 +454,6 @@ function openPanel(room, focus = true) {
   get('inspection-controls').hidden = !world;
   if (focus) panel.scrollTop = 0;
   document.body.classList.add('puzzle-open');
-  get('engage').hidden = true;
   get('panel-kicker').textContent = galleryLabel(room);
   get('panel-title').textContent = exhibit.task;
   get('instruction').textContent = words.tasks[room];
@@ -484,7 +499,6 @@ for (const dialog of [map, notes]) {
 }
 
 function showFinale() {
-  if (get('finale').hidden || finalePlaying || !get('final-card').hidden) return;
   finalePlaying = true;
   world?.focus(null);
   syncWorld();
@@ -512,15 +526,14 @@ get('minimap-button').addEventListener('click', (event) => showDialog(map, event
 get('open-notes').addEventListener('click', (event) => { event.preventDefault(); showDialog(notes, event.currentTarget); });
 get('map-notes').addEventListener('click', () => { map.close(); showDialog(notes, get('open-map')); });
 get('return-hall').addEventListener('click', () => pickWaypoint(null));
-get('engage').addEventListener('click', () => { if (nearby >= 0) openPanel(nearby); });
+engage.addEventListener('click', interact);
 get('close-panel').addEventListener('click', () => closePanel());
-get('finale').addEventListener('click', showFinale);
 get('close-final').addEventListener('click', () => {
   get('final-card').hidden = true;
   world?.releaseFocus();
   world?.finale(false);
-  get('finale').focus({preventScroll: true});
   syncWorld();
+  engage.focus({preventScroll: true});
 });
 get('next-room').addEventListener('click', () => closePanel());
 get('reset-game').addEventListener('click', () => {
@@ -556,8 +569,8 @@ window.addEventListener('keydown', (event) => {
     if (!event.repeat) performAction(event.code === 'Space' ? 'jump' : 'punch');
     return;
   }
-  if (event.code === 'KeyE' && nearby >= 0 && !event.repeat) {
-    openPanel(nearby);
+  if (event.code === 'KeyE') {
+    if (!event.repeat) interact();
     return;
   }
   if (movementKeys.has(event.code)) {

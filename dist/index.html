@@ -48,14 +48,13 @@
       </div>
       <div id="waypoint" class="waypoint" hidden><i aria-hidden="true"></i><span></span></div>
       <div id="aim" aria-hidden="true"></div>
-      <button id="engage" class="engage" type="button" hidden><kbd>E</kbd><span data-text="interact">Open installation</span></button>
+      <button id="engage" class="engage" type="button" aria-keyshortcuts="E" hidden><kbd aria-hidden="true">E</kbd><span>Open installation</span></button>
       <div class="bottom-hud">
         <div class="map-stack">
           <button id="minimap-button" class="minimap-button" type="button" aria-label="Open the floor plan" data-label="minimap">
             <span class="mini-map" aria-hidden="true"><canvas id="mini-canvas"></canvas><i id="mini-you"></i></span>
             <span id="map-progress">Light fragments 0 / 7</span>
           </button>
-          <button class="action finale-button" id="finale" type="button" data-text="ignite" hidden>Light the central piece</button>
         </div>
         <p class="keyboard-help"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> <span data-text="walk">Move</span> <i>·</i> <span data-text="drag">Drag to look</span> <i>·</i> <kbd>E</kbd> <span data-text="use">Interact</span> <i>·</i> <kbd>Space</kbd> <span data-text="jump">Jump</span> <i>·</i> <kbd>F</kbd> <span data-text="punch">Punch</span></p>
         <div class="touch-actions"><button type="button" data-action="jump" data-text="jump">Jump</button><button type="button" data-action="punch" data-text="punch">Punch</button></div>

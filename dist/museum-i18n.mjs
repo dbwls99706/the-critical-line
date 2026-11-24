@@ -67,7 +67,7 @@ export const copy = {
     reset: 'Reset exhibition progress',
     noScript: 'The exhibition requires JavaScript.',
     no3d: 'This browser could not render the hall. Open an installation from the floor plan.',
-    allFragments: 'All seven fragments collected. Walk back to the central piece.',
+    allFragments: 'All seven fragments collected. Walk back to light the central piece.',
     fragment: 'Light fragment collected.',
     aligned: '½ · Aligned',
     lightSlider: (index) => `Position of light ${index}`,
